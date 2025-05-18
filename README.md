@@ -36,16 +36,16 @@ flutter pub get
 Set up your providers and storage with `AuthConfig`, then initialize the system:
 
 ```dart
-final config = AuthConfig(
-  providers: {
-    'email': EmailPasswordAuthProvider(endpoint: 'https://api.example.com/login'),
-    'anonymous': AnonymousAuthProvider(),
-  },
-  defaultProvider: 'email',
-  storage: SecureAuthStorage(),
-);
+// Create providers
+final anonymousProvider = AnonymousAuthProvider();
+final emailProvider = MockEmailPasswordAuthProvider();
 
-AuthManager().configure(config);
+// Configure auth manager
+await AuthManager().configure(AuthConfig(
+  providers: [anonymousProvider, emailProvider],
+  defaultProviderId: 'email_password',
+  storage: SecureAuthStorage.withDefaultUser(),
+));
 ```
 
 ---
@@ -55,10 +55,32 @@ AuthManager().configure(config);
 ### Login
 
 ```dart
-await AuthManager().login({
+// Login with default provider
+final result = await AuthManager().login({
   'email': 'user@example.com',
   'password': 'secret',
 });
+
+// Login with specific provider
+final result = await AuthManager().loginWithProvider(
+  'anonymous',
+  {},
+);
+
+// Access user and token from result
+final user = result.user;
+final token = result.token;
+```
+
+### Manual Session
+
+```dart
+// Inject a session directly
+await AuthManager().setSession(
+  user,
+  token,
+  providerId: 'custom',
+);
 ```
 
 ### Logout
@@ -67,37 +89,159 @@ await AuthManager().login({
 await AuthManager().logout();
 ```
 
-### Listen to Auth State
+### Auth State
 
 ```dart
+// Get current state
+final isLoggedIn = AuthManager().isAuthenticated;
+final user = AuthManager().currentUser;
+final token = AuthManager().currentToken;
+
+// Listen to auth state changes
 AuthManager().statusStream.listen((status) {
   print("Auth status: $status");
 });
+
+// Listen to user changes
+AuthManager().userStream.listen((user) {
+  if (user != null) {
+    print("User: ${user.id}");
+  }
+});
+
+// Listen to token changes
+AuthManager().tokenStream.listen((token) {
+  if (token != null) {
+    print("Token: ${token.accessToken}");
+  }
+});
 ```
 
-### Get Current User / Token
+### Global Events
 
 ```dart
-final user = AuthManager().currentUser;
-final token = AuthManager().currentToken;
+// Listen to all login events
+AuthEventBus().onLogin((event) {
+  print('User logged in: ${event.user.id} via ${event.providerId}');
+});
+
+// Listen to all logout events
+AuthEventBus().onLogout((event) {
+  print('User logged out: ${event.user?.id}');
+});
 ```
 
 ---
 
-## 🧩 Flutter UI
+## 🧩 Flutter UI Integration
 
 Use `AuthBuilder` to rebuild UI based on authentication state:
 
 ```dart
 AuthBuilder(
-  builder: (context, status, user) {
-    if (status == AuthStatus.authenticated) {
-      return HomeScreen(user: user);
-    } else {
-      return LoginScreen();
-    }
+  authenticated: (context, user, token) {
+    return HomeScreen(user: user);
+  },
+  unauthenticated: (context) {
+    return LoginScreen();
+  },
+  loading: (context) {
+    return LoadingScreen();
   },
 )
+```
+
+## 🔧 Custom Providers
+
+Implement your own authentication providers by extending `AuthProvider`:
+
+```dart
+class MyCustomAuthProvider extends AuthProvider {
+  @override
+  String get providerId => 'custom_provider';
+
+  @override
+  Future<AuthResult> login(Map<String, dynamic> credentials) async {
+    // Implement your authentication logic here
+
+    // Create user and token
+    final user = DefaultAuthUser(
+      id: 'user123',
+      email: 'user@example.com',
+    );
+
+    final token = AuthToken(
+      accessToken: 'my-access-token',
+      refreshToken: 'my-refresh-token',
+      expiresAt: DateTime.now().add(Duration(hours: 1)),
+    );
+
+    return AuthResult(user: user, token: token);
+  }
+
+  @override
+  Future<void> logout() async {
+    // Implement any custom logout logic here
+  }
+}
+```
+
+## 🔐 Custom User Model
+
+Extend `AuthUser` to create your own user model:
+
+```dart
+class MyUser extends AuthUser {
+  @override
+  final String id;
+
+  @override
+  final String? email;
+
+  @override
+  final String? displayName;
+
+  final String? photoUrl;
+  final List<String> roles;
+
+  MyUser({
+    required this.id,
+    this.email,
+    this.displayName,
+    this.photoUrl,
+    this.roles = const [],
+  });
+
+  @override
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'email': email,
+      'displayName': displayName,
+      'photoUrl': photoUrl,
+      'roles': roles,
+    };
+  }
+
+  factory MyUser.fromJson(Map<String, dynamic> json) {
+    return MyUser(
+      id: json['id'],
+      email: json['email'],
+      displayName: json['displayName'],
+      photoUrl: json['photoUrl'],
+      roles: List<String>.from(json['roles'] ?? []),
+    );
+  }
+
+  factory MyUser.deserialize(String data) {
+    return MyUser.fromJson(jsonDecode(data));
+  }
+}
+
+// Use with custom storage:
+final storage = SecureAuthStorage(
+  userDeserializer: (data) => MyUser.deserialize(data),
+);
 ```
 
 ---

@@ -1,0 +1,257 @@
+import 'dart:async';
+
+import 'package:rxdart/rxdart.dart';
+
+import 'auth_config.dart';
+import 'auth_event_bus.dart';
+import 'auth_provider.dart';
+import 'auth_registry.dart';
+import 'auth_status.dart';
+import 'auth_storage.dart';
+import 'auth_token.dart';
+import 'auth_user.dart';
+import 'events/auth_events.dart';
+
+/// Central manager for authentication state and operations.
+class AuthManager {
+  /// Singleton instance of the auth manager
+  static final AuthManager _instance = AuthManager._();
+
+  // Stream controllers
+  final BehaviorSubject<AuthStatus> _statusController = BehaviorSubject<AuthStatus>.seeded(AuthStatus.loading);
+  final BehaviorSubject<AuthUser?> _userController = BehaviorSubject<AuthUser?>.seeded(null);
+  final BehaviorSubject<AuthToken?> _tokenController = BehaviorSubject<AuthToken?>.seeded(null);
+  final BehaviorSubject<String?> _providerIdController = BehaviorSubject<String?>.seeded(null);
+
+  // Event bus for dispatching global events
+  final AuthEventBus _eventBus = AuthEventBus();
+
+  // Storage instance
+  AuthStorage? _storage;
+
+  // Provider registry
+  final AuthRegistry _registry = AuthRegistry();
+
+  /// Factory constructor that returns the singleton instance
+  factory AuthManager() => _instance;
+
+  /// Private constructor for singleton
+  AuthManager._();
+
+  /// Stream of authentication status changes
+  Stream<AuthStatus> get statusStream => _statusController.stream;
+
+  /// Stream of authenticated user changes
+  Stream<AuthUser?> get userStream => _userController.stream;
+
+  /// Stream of authentication token changes
+  Stream<AuthToken?> get tokenStream => _tokenController.stream;
+
+  /// Stream of provider ID changes
+  Stream<String?> get providerIdStream => _providerIdController.stream;
+
+  /// Current authentication status
+  AuthStatus get status => _statusController.value;
+
+  /// Currently authenticated user (if any)
+  AuthUser? get currentUser => _userController.value;
+
+  /// Current authentication token (if any)
+  AuthToken? get currentToken => _tokenController.value;
+
+  /// ID of the current authentication provider (if any)
+  String? get currentProviderId => _providerIdController.value;
+
+  /// Whether the user is currently authenticated
+  bool get isAuthenticated => status == AuthStatus.authenticated;
+
+  /// Configures the auth manager with the given configuration
+  ///
+  /// This must be called before using any authentication functionality.
+  Future<void> configure(AuthConfig config) async {
+    _storage = config.storage;
+
+    // Set initial state to loading
+    _statusController.add(AuthStatus.loading);
+
+    try {
+      // Try to restore the session
+      await _restoreSession();
+    } catch (e) {
+      // If session restoration fails, set unauthenticated state
+      _setUnauthenticated();
+    }
+  }
+
+  /// Logs in with the default provider and the given credentials
+  Future<AuthResult> login(Map<String, dynamic> credentials) async {
+    // Get the default provider from the registry
+    final providerId = _providerIdController.value;
+    AuthProvider provider;
+
+    if (providerId != null && _registry.hasProvider(providerId)) {
+      provider = _registry.getProvider(providerId)!;
+    } else {
+      // No provider selected, use the first available one
+      if (_registry.providers.isEmpty) {
+        throw Exception('No authentication providers registered');
+      }
+      provider = _registry.providers.first;
+    }
+
+    return loginWithProvider(provider.providerId, credentials);
+  }
+
+  /// Logs in with a specific provider and the given credentials
+  Future<AuthResult> loginWithProvider(String providerId, Map<String, dynamic> credentials) async {
+    // Set loading state
+    _statusController.add(AuthStatus.loading);
+
+    try {
+      // Get the provider from the registry
+      final provider = _registry.getProvider(providerId);
+      if (provider == null) {
+        throw Exception('Provider not found: $providerId');
+      }
+
+      // Perform the login
+      final result = await provider.login(credentials);
+
+      // Update the state
+      await _setSession(result.user, result.token, providerId);
+
+      // Return the result
+      return result;
+    } catch (e) {
+      // Set unauthenticated state on error
+      _setUnauthenticated();
+      rethrow;
+    }
+  }
+
+  /// Logs out the current user
+  Future<void> logout() async {
+    final user = currentUser;
+    final providerId = currentProviderId;
+
+    // Set loading state
+    _statusController.add(AuthStatus.loading);
+
+    try {
+      // Call the provider's logout method if available
+      if (providerId != null) {
+        final provider = _registry.getProvider(providerId);
+        if (provider != null) {
+          await provider.logout();
+        }
+      }
+
+      // Clear the state
+      await _clearSession();
+
+      // Dispatch logout event
+      _eventBus.dispatch(LogoutEvent(user: user, providerId: providerId));
+    } finally {
+      // Always set unauthenticated state
+      _setUnauthenticated();
+    }
+  }
+
+  /// Sets the session directly with the given user and token
+  ///
+  /// This is useful for custom authentication flows or when you already
+  /// have a valid user and token.
+  Future<void> setSession(AuthUser user, AuthToken token, {String? providerId}) async {
+    await _setSession(user, token, providerId);
+  }
+
+  /// Restores the session from storage
+  Future<void> _restoreSession() async {
+    if (_storage == null) {
+      _setUnauthenticated();
+      return;
+    }
+
+    // Get token and user from storage
+    final token = await _storage!.getToken();
+    final user = await _storage!.getUser();
+
+    // If both token and user are available, set the session
+    if (token != null && user != null) {
+      // Check if token is expired
+      if (token.isExpired) {
+        await _storage!.clearAll();
+        _setUnauthenticated();
+        return;
+      }
+
+      // Get provider ID from storage or use the default
+      final providerId = currentProviderId ?? _registry.providers.firstOrNull?.providerId;
+
+      // If we have a provider, check if the session is valid
+      if (providerId != null) {
+        final provider = _registry.getProvider(providerId);
+        if (provider != null) {
+          final isValid = await provider.checkSession(token, user);
+          if (!isValid) {
+            await _storage!.clearAll();
+            _setUnauthenticated();
+            return;
+          }
+        }
+      }
+
+      // Set the session without saving to storage (already there)
+      _userController.add(user);
+      _tokenController.add(token);
+      _providerIdController.add(providerId);
+      _statusController.add(AuthStatus.authenticated);
+    } else {
+      _setUnauthenticated();
+    }
+  }
+
+  /// Sets the session with the given user, token, and provider ID
+  Future<void> _setSession(AuthUser user, AuthToken token, String? providerId) async {
+    // Update the state
+    _userController.add(user);
+    _tokenController.add(token);
+    _providerIdController.add(providerId);
+    _statusController.add(AuthStatus.authenticated);
+
+    // Save to storage if available
+    if (_storage != null) {
+      await _storage!.saveUser(user);
+      await _storage!.saveToken(token);
+    }
+
+    // Dispatch login event
+    _eventBus.dispatch(LoginEvent(user: user, token: token, providerId: providerId ?? 'direct'));
+  }
+
+  /// Sets the state to unauthenticated
+  void _setUnauthenticated() {
+    _statusController.add(AuthStatus.unauthenticated);
+  }
+
+  /// Clears the current session
+  Future<void> _clearSession() async {
+    // Clear the state
+    _userController.add(null);
+    _tokenController.add(null);
+    _providerIdController.add(null);
+
+    // Clear storage if available
+    if (_storage != null) {
+      await _storage!.clearAll();
+    }
+  }
+
+  /// Disposes resources
+  void dispose() {
+    _statusController.close();
+    _userController.close();
+    _tokenController.close();
+    _providerIdController.close();
+  }
+}
