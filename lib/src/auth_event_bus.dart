@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:rxdart/rxdart.dart';
+
 import 'events/auth_events.dart';
 
 /// Simple event bus for auth events that allows components to subscribe to auth events.
@@ -7,11 +9,14 @@ class AuthEventBus {
   /// Singleton instance
   static final AuthEventBus _instance = AuthEventBus._();
 
-  /// Stream controller for auth events
-  final StreamController<AuthEvent> _eventController = StreamController<AuthEvent>.broadcast();
+  /// BehaviorSubject for auth events with replay of the latest event
+  final BehaviorSubject<AuthEvent> _eventSubject = BehaviorSubject<AuthEvent>();
 
-  /// Stream of auth events
-  Stream<AuthEvent> get events => _eventController.stream;
+  /// Stream of auth events that also emits the most recent event to new subscribers
+  Stream<AuthEvent> get events => _eventSubject.stream;
+
+  /// The most recent event that was dispatched (if any)
+  AuthEvent? get lastEvent => _eventSubject.hasValue ? _eventSubject.value : null;
 
   /// Factory constructor that returns the singleton instance
   factory AuthEventBus() => _instance;
@@ -21,7 +26,7 @@ class AuthEventBus {
 
   /// Dispatches an auth event to all listeners
   void dispatch(AuthEvent event) {
-    _eventController.add(event);
+    _eventSubject.add(event);
   }
 
   /// Listens to auth events of a specific type
@@ -41,6 +46,6 @@ class AuthEventBus {
 
   /// Disposes the event bus
   void dispose() {
-    _eventController.close();
+    _eventSubject.close();
   }
 }

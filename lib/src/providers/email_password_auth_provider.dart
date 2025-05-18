@@ -81,4 +81,9 @@ class MockEmailPasswordAuthProvider extends EmailPasswordAuthProvider {
 
     return AuthResult(user: user, token: token);
   }
+
+  @override
+  Future<void> logout() {
+    throw UnimplementedError();
+  }
 }
