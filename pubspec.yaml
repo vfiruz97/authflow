@@ -1,0 +1,21 @@
+name: authflow
+description: "A flexible, provider-based authentication toolkit for Flutter with
+  stream-based auth state, customizable storage, and composable UI widgets."
+version: 0.0.1
+homepage: https://github.com/vfiruz97/authflow
+repository: https://github.com/vfiruz97/authflow
+issue_tracker: https://github.com/vfiruz97/authflow/issues
+license: MIT
+
+environment:
+  sdk: ^3.7.2
+  flutter: ">=1.17.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
