@@ -1,3 +1,39 @@
-## 0.0.1
+## 0.0.1 - May 19, 2025
 
-* TODO: Describe initial release.
+Initial release of the Authflow package with the following features:
+
+### Core Components
+
+- `AuthToken`: Token management with access token, refresh token, and expiration handling
+- `AuthUser`: Abstract user model with `DefaultAuthUser` implementation
+- `AuthStorage`: Interface for persisting authentication state
+- `SecureAuthStorage`: Implementation using SharedPreferences for secure storage
+- `AuthProvider`: Abstract interface for authentication providers
+- `AuthStatus`: Enum representing authentication states (authenticated, unauthenticated, loading)
+- `AuthRegistry`: Global registry for managing authentication providers
+- `AuthManager`: Central orchestrator for authentication operations
+- `AuthConfig`: Configuration system for the auth manager
+- `AuthEventBus`: Reactive event system using RxDart's BehaviorSubject for auth state changes
+
+### Authentication Providers
+
+- `AnonymousAuthProvider`: Provider for anonymous authentication
+- `EmailPasswordAuthProvider`: Base provider for email/password authentication
+- `MockEmailPasswordAuthProvider`: Implementation for testing or demos
+
+### Events
+
+- `LoginEvent`: Dispatched when a user logs in
+- `LogoutEvent`: Dispatched when a user logs out
+
+### Flutter Widgets
+
+- `AuthBuilder`: Stream-based widget for building UIs based on auth state
+
+### Features
+
+- Multiple authentication provider support
+- Reactive streams for auth status, user, and token
+- Secure token and user persistence
+- Manual session injection capabilities
+- Global event system for cross-app auth state management
