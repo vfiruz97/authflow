@@ -272,12 +272,6 @@ AuthRegistry.register('my_provider', MyProvider());
 
 ---
 
-## 📂 Project Structure
-
-See [ARCHITECTURE.md](ARCHITECTURE.md) for a full breakdown of internal structure and contribution guidelines.
-
----
-
 ## 📄 License
 
 This project is licensed under the [MIT License](LICENSE).
