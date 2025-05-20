@@ -4,6 +4,7 @@ import 'package:rxdart/rxdart.dart';
 
 import 'auth_config.dart';
 import 'auth_event_bus.dart';
+import 'auth_exception.dart';
 import 'auth_provider.dart';
 import 'auth_registry.dart';
 import 'auth_status.dart';
@@ -94,7 +95,11 @@ class AuthManager {
     } else {
       // No provider selected, use the first available one
       if (_registry.providers.isEmpty) {
-        throw Exception('No authentication providers registered');
+        throw AuthException.provider(
+          'default',
+          Exception('No providers registered'),
+          'No authentication providers registered',
+        );
       }
       provider = _registry.providers.first;
     }
@@ -111,7 +116,7 @@ class AuthManager {
       // Get the provider from the registry
       final provider = _registry.getProvider(providerId);
       if (provider == null) {
-        throw Exception('Provider not found: $providerId');
+        throw AuthException.provider(providerId, Exception('Provider not found'), 'Provider not found: $providerId');
       }
 
       // Perform the login

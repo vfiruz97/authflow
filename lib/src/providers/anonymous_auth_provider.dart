@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import '../auth_exception.dart';
 import '../auth_provider.dart';
 import '../auth_token.dart';
 import '../auth_user.dart';
@@ -29,20 +30,24 @@ class AnonymousAuthProvider extends AuthProvider {
 
   @override
   Future<AuthResult> login(Map<String, dynamic> credentials) async {
-    // Generate a random ID if no ID generator is provided
-    final id = _idGenerator?.call() ?? _generateRandomId();
+    try {
+      // Generate a random ID if no ID generator is provided
+      final id = _idGenerator?.call() ?? _generateRandomId();
 
-    // Create an anonymous user
-    final user = DefaultAuthUser(id: id, isAnonymous: true);
+      // Create an anonymous user
+      final user = DefaultAuthUser(id: id, isAnonymous: true);
 
-    // Create a token for the anonymous session
-    final token = AuthToken(
-      accessToken: 'anonymous-${user.id}',
-      // Set an expiration date for the anonymous session (e.g., 7 days)
-      expiresAt: DateTime.now().add(expirationDuration),
-    );
+      // Create a token for the anonymous session
+      final token = AuthToken(
+        accessToken: 'anonymous-${user.id}',
+        // Set an expiration date for the anonymous session (e.g., 7 days)
+        expiresAt: DateTime.now().add(expirationDuration),
+      );
 
-    return AuthResult(user: user, token: token);
+      return AuthResult(user: user, token: token);
+    } catch (e) {
+      throw AuthException.from(e);
+    }
   }
 
   @override
@@ -52,9 +57,13 @@ class AnonymousAuthProvider extends AuthProvider {
 
   /// Generates a random ID for anonymous users
   String _generateRandomId() {
-    final random = Random();
-    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    return List.generate(24, (index) => chars[random.nextInt(chars.length)]).join() +
-        DateTime.now().millisecondsSinceEpoch.toString();
+    try {
+      final random = Random();
+      const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      return List.generate(24, (index) => chars[random.nextInt(chars.length)]).join() +
+          DateTime.now().millisecondsSinceEpoch.toString();
+    } catch (e) {
+      throw AuthException.unknown(e, 'Failed to generate random ID for anonymous user');
+    }
   }
 }

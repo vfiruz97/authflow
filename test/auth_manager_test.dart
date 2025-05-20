@@ -124,5 +124,25 @@ void main() {
 
       expect(authManager.isAuthenticated, isFalse);
     });
+
+    test('login fails with appropriate exception when provider not found', () async {
+      await authManager.configure(AuthConfig(providers: [], storage: mockStorage));
+
+      expect(
+        () => authManager.loginWithProvider('nonexistent_provider', {}),
+        throwsA(isA<AuthException>().having((e) => e.type, 'exception type', AuthExceptionType.providerError)),
+      );
+    });
+
+    test('login fails with appropriate exception when no providers registered', () async {
+      // Clear the registry
+      AuthRegistry().clear();
+      await authManager.configure(AuthConfig(providers: [], storage: mockStorage));
+
+      expect(
+        () => authManager.login({}),
+        throwsA(isA<AuthException>().having((e) => e.type, 'exception type', AuthExceptionType.providerError)),
+      );
+    });
   });
 }

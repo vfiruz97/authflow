@@ -11,6 +11,7 @@
 - 📡 Global login/logout event support
 - 🧱 Customizable user model and providers
 - 🧩 UI widgets for seamless auth-based rendering
+- 🛡️ Standardized exception handling
 
 ---
 
@@ -241,6 +242,81 @@ class MyUser extends AuthUser {
 // Use with custom storage:
 final storage = SecureAuthStorage(
   userDeserializer: (data) => MyUser.deserialize(data),
+);
+```
+
+---
+
+## 🛡️ Error Handling
+
+Authflow provides a standardized exception handling system with `AuthException`:
+
+```dart
+try {
+  final result = await AuthManager().login({
+    'email': 'user@example.com',
+    // missing password
+  });
+} on AuthException catch (e) {
+  // Access type and message
+  print('Error type: ${e.type}');
+  print('Error message: ${e.message}');
+
+  // Access original error (if any)
+  if (e.error != null) {
+    print('Original error: ${e.error}');
+  }
+
+  // Handle specific error types
+  switch (e.type) {
+    case AuthExceptionType.missingCredentials:
+      showMissingFieldsError(e.message);
+      break;
+    case AuthExceptionType.invalidCredentials:
+      showInvalidCredentialsError();
+      break;
+    case AuthExceptionType.networkError:
+      showNetworkError();
+      break;
+    // Handle other error types...
+    default:
+      showGenericError(e.message);
+  }
+}
+```
+
+### Available Exception Types
+
+The `AuthExceptionType` enum provides the following error categories:
+
+- `invalidCredentials`: Wrong password, email not found, etc.
+- `missingCredentials`: Required fields (email, password) missing
+- `userNotFound`: User doesn't exist
+- `networkError`: Network connectivity issues
+- `serverError`: Server-side errors
+- `sessionExpired`: Token expired or invalid
+- `unauthenticated`: Authentication required
+- `providerError`: Provider-specific errors
+- `tokenError`: Token validation/refresh failures
+- `accountIssue`: Account disabled, locked, etc.
+- `permissionDenied`: Insufficient privileges
+- `tooManyRequests`: Rate limiting
+- `unknown`: Unclassified errors
+
+### Creating Custom Exceptions
+
+You can create custom auth exceptions:
+
+```dart
+// Using a factory constructor
+final exception = AuthException.invalidCredentials('Custom error message');
+
+// Or the generic constructor
+final exception = AuthException(
+  message: 'Custom error message',
+  type: AuthExceptionType.networkError,
+  error: originalError,
+  details: {'retry': true, 'timeout': 30},
 );
 ```
 

@@ -5,7 +5,18 @@ void main() {
   group('AuthEventBus', () {
     late AuthEventBus eventBus;
 
+    setUpAll(() {
+      // Enable test mode for all tests in this group
+      AuthEventBus.enableTestMode();
+    });
+
+    tearDownAll(() {
+      // Disable test mode after all tests
+      AuthEventBus.disableTestMode();
+    });
+
     setUp(() {
+      // Create a new instance for each test (test mode ensures this is a new instance)
       eventBus = AuthEventBus();
     });
 

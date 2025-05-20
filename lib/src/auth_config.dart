@@ -1,3 +1,4 @@
+import 'auth_exception.dart';
 import 'auth_provider.dart';
 import 'auth_registry.dart';
 import 'auth_storage.dart';
@@ -36,13 +37,21 @@ class AuthConfig {
   AuthProvider getDefaultProvider() {
     final registry = AuthRegistry();
     if (providers.isEmpty) {
-      throw Exception('No authentication providers registered');
+      throw AuthException.provider(
+        'default',
+        Exception('No providers available'),
+        'No authentication providers registered',
+      );
     }
 
     if (defaultProviderId != null) {
       final provider = registry.getProvider(defaultProviderId!);
       if (provider == null) {
-        throw Exception('Default provider not found: $defaultProviderId');
+        throw AuthException.provider(
+          defaultProviderId!,
+          Exception('Provider not found'),
+          'Default provider not found: $defaultProviderId',
+        );
       }
       return provider;
     }

@@ -1,3 +1,14 @@
+## 0.2.0 - May 20, 2025
+
+- Implemented standardized exception handling with `AuthException` class
+- Added typed exception factory constructors for various authentication scenarios
+- Updated providers to use consistent error handling
+- Improved testing for exception cases
+- Enhanced error reporting with contextual information
+- Added test mode support to `AuthEventBus` for improved testability
+- Fixed event handling in tests to avoid cross-test interference
+- Add optional expiration duration for anonymous sessions in AnonymousAuthProvider
+
 ## 0.0.1 - May 19, 2025
 
 Initial release of the Authflow package with the following features:

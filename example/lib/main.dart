@@ -94,9 +94,29 @@ class _LoginScreenState extends State<LoginScreen> {
         'email': _emailController.text,
         'password': _passwordController.text,
       });
+    } on AuthException catch (e) {
+      setState(() {
+        // Handle specific exception types differently
+        switch (e.type) {
+          case AuthExceptionType.missingCredentials:
+            _errorMessage = 'Please fill in all required fields: ${e.message}';
+            break;
+          case AuthExceptionType.invalidCredentials:
+            _errorMessage = 'Invalid login credentials. Please try again.';
+            break;
+          case AuthExceptionType.networkError:
+            _errorMessage = 'Network error. Please check your connection.';
+            break;
+          case AuthExceptionType.serverError:
+            _errorMessage = 'Server error occurred. Please try again later.';
+            break;
+          default:
+            _errorMessage = 'Login failed: ${e.message}';
+        }
+      });
     } catch (e) {
       setState(() {
-        _errorMessage = 'Login failed: ${e.toString()}';
+        _errorMessage = 'Unexpected error: ${e.toString()}';
       });
     } finally {
       if (mounted) {
@@ -115,9 +135,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       await AuthManager().loginWithProvider('anonymous', {});
+    } on AuthException catch (e) {
+      setState(() {
+        _errorMessage = 'Login failed: ${e.message}';
+      });
     } catch (e) {
       setState(() {
-        _errorMessage = 'Anonymous login failed: ${e.toString()}';
+        _errorMessage = 'Unexpected error: ${e.toString()}';
       });
     } finally {
       if (mounted) {
@@ -184,7 +208,15 @@ class HomeScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () async {
-              await AuthManager().logout();
+              try {
+                await AuthManager().logout();
+              } on AuthException catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Logout error: ${e.message}')));
+              } catch (e) {
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(SnackBar(content: Text('Unexpected error: ${e.toString()}')));
+              }
             },
           ),
         ],

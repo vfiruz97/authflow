@@ -1,3 +1,4 @@
+import '../auth_exception.dart';
 import '../auth_provider.dart';
 import '../auth_token.dart';
 import '../auth_user.dart';
@@ -29,11 +30,11 @@ abstract class EmailPasswordAuthProvider extends AuthProvider {
     final password = credentials['password'] as String?;
 
     if (email == null || email.isEmpty) {
-      throw FormatException('Email is required');
+      throw AuthException.missingCredentials('Email is required');
     }
 
     if (password == null || password.isEmpty) {
-      throw FormatException('Password is required');
+      throw AuthException.missingCredentials('Password is required');
     }
 
     // Call the implementation-specific authenticate method
@@ -48,11 +49,13 @@ abstract class EmailPasswordAuthProvider extends AuthProvider {
 
   @override
   String formatLoginError(dynamic error) {
-    if (error is FormatException) {
+    if (error is AuthException) {
       return error.message;
     }
 
-    return 'Email/password authentication failed: ${error.toString()}';
+    // Convert other errors to AuthException
+    final authError = AuthException.from(error);
+    return authError.message;
   }
 }
 
@@ -83,7 +86,7 @@ class MockEmailPasswordAuthProvider extends EmailPasswordAuthProvider {
   }
 
   @override
-  Future<void> logout() {
-    throw UnimplementedError();
+  Future<void> logout() async {
+    // No specific logout functionality for mock provider
   }
 }

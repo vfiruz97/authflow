@@ -2,9 +2,10 @@
 /// stream-based auth state, customizable storage, and composable UI widgets.
 library;
 
+// Core components
 export 'src/auth_config.dart';
 export 'src/auth_event_bus.dart';
-// Core components
+export 'src/auth_exception.dart';
 export 'src/auth_manager.dart';
 export 'src/auth_provider.dart';
 export 'src/auth_registry.dart';

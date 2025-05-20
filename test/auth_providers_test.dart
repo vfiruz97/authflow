@@ -66,10 +66,16 @@ void main() {
       final provider = MockEmailPasswordAuthProvider();
 
       // Missing email
-      expect(() => provider.login({'password': 'test123'}), throwsA(isA<FormatException>()));
+      expect(
+        () => provider.login({'password': 'test123'}),
+        throwsA(isA<AuthException>().having((e) => e.type, 'exception type', AuthExceptionType.missingCredentials)),
+      );
 
       // Missing password
-      expect(() => provider.login({'email': 'test@example.com'}), throwsA(isA<FormatException>()));
+      expect(
+        () => provider.login({'email': 'test@example.com'}),
+        throwsA(isA<AuthException>().having((e) => e.type, 'exception type', AuthExceptionType.missingCredentials)),
+      );
     });
 
     test('login returns user and token with valid credentials', () async {
