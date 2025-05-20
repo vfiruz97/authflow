@@ -12,12 +12,20 @@ class AnonymousAuthProvider extends AuthProvider {
   /// Optional function to generate a unique ID for anonymous users
   final String Function()? _idGenerator;
 
+  /// Optional expiration duration for anonymous sessions
+  /// Defaults to 7 days if not provided
+  final Duration expirationDuration;
+
   /// Creates a new [AnonymousAuthProvider] instance
   ///
   /// An optional [idGenerator] can be provided to customize how anonymous
   /// user IDs are generated. If not provided, a random UUID-like string
   /// will be generated.
-  AnonymousAuthProvider({String Function()? idGenerator}) : _idGenerator = idGenerator;
+  /// An optional [expirationDuration] can be provided to set the
+  /// expiration duration for anonymous sessions. Defaults to 7 days.
+  AnonymousAuthProvider({String Function()? idGenerator, Duration? expirationDuration})
+    : _idGenerator = idGenerator,
+      expirationDuration = expirationDuration ?? const Duration(days: 7);
 
   @override
   Future<AuthResult> login(Map<String, dynamic> credentials) async {
@@ -31,7 +39,7 @@ class AnonymousAuthProvider extends AuthProvider {
     final token = AuthToken(
       accessToken: 'anonymous-${user.id}',
       // Set an expiration date for the anonymous session (e.g., 7 days)
-      expiresAt: DateTime.now().add(const Duration(days: 7)),
+      expiresAt: DateTime.now().add(expirationDuration),
     );
 
     return AuthResult(user: user, token: token);
