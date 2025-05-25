@@ -136,38 +136,61 @@ AuthBuilder(
   loading: (context) {
     return LoadingScreen();
   },
-)
+  // Optional: Control when rebuilds happen
+  buildWhen: (previous, current) {
+    // Don't rebuild during login attempts
+    if (current.status == AuthStatus.loading &&
+        previous.status != AuthStatus.loading) {
+      return false;
+    }
+    return true;
+  },
+);
 ```
 
-## 🔧 Custom Providers
+> **Tip:** The `buildWhen` parameter helps prevent UI flashing during authentication state changes. For example, you can use it to prevent the login screen from disappearing momentarily during login attempts.
 
-Implement your own authentication providers by extending `AuthProvider`:
+---
+
+## 🧱 Extending
+
+### Custom Provider
+
+Implement `AuthProvider`, return an `AuthResult`, and add it to your `AuthConfig`:
 
 ```dart
-class MyCustomAuthProvider extends AuthProvider {
+class MyProvider extends AuthProvider {
   @override
-  String get providerId => 'custom_provider';
+  String get providerId => 'my_provider';
 
   @override
   Future<AuthResult> login(Map<String, dynamic> credentials) async {
     // Implement your authentication logic here
+    // ...
 
-    // Create user and token
-    final user = DefaultAuthUser(
-      id: 'user123',
-      email: 'user@example.com',
-    );
-
-    final token = AuthToken(
-      accessToken: 'my-access-token',
-      refreshToken: 'my-refresh-token',
-      expiresAt: DateTime.now().add(Duration(hours: 1)),
-    );
-
-    return AuthResult(user: user, token: token);
+    // Return AuthResult with user and token
+    return AuthResult(user: customUser, token: customToken);
   }
+
+  // ...logout(), isAuthenticated(), currentUser()
 }
+
+// Configure AuthManager with your custom provider
+await AuthManager().configure(AuthConfig(
+  providers: [
+    MyProvider(),
+    AnonymousAuthProvider(),
+  ],
+  // Optionally set your custom provider as default
+  defaultProviderId: 'my_provider',
+  storage: SecureAuthStorage.withDefaultUser(),
+));
 ```
+
+### Custom User or Storage
+
+- Implement your own `AuthUser` to match your API
+- Implement `AuthStorage` for custom persistence
 
 ## 🔐 Custom User Model
 
@@ -288,48 +311,6 @@ final myException = AuthException.custom(
   details: {'verificationType': 'email'},
 );
 ```
-
----
-
-## 🧱 Extending
-
-### Custom Provider
-
-Implement `AuthProvider`, return an `AuthResult`, and add it to your `AuthConfig`:
-
-```dart
-class MyProvider extends AuthProvider {
-  @override
-  String get providerId => 'my_provider';
-
-  @override
-  Future<AuthResult> login(Map<String, dynamic> credentials) async {
-    // Implement your authentication logic here
-    // ...
-
-    // Return AuthResult with user and token
-    return AuthResult(user: customUser, token: customToken);
-  }
-
-  // ...logout(), isAuthenticated(), currentUser()
-}
-
-// Configure AuthManager with your custom provider
-await AuthManager().configure(AuthConfig(
-  providers: [
-    MyProvider(),
-    AnonymousAuthProvider(),
-  ],
-  // Optionally set your custom provider as default
-  defaultProviderId: 'my_provider',
-  storage: SecureAuthStorage.withDefaultUser(),
-));
-```
-
-### Custom User or Storage
-
-- Implement your own `AuthUser` to match your API
-- Implement `AuthStorage` for custom persistence
 
 ---
 
