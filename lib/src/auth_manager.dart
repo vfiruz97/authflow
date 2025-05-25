@@ -254,6 +254,8 @@ class AuthManager {
 
   /// Disposes resources
   void dispose() {
+    _registry.clear();
+    _eventBus.dispose();
     _statusController.close();
     _userController.close();
     _tokenController.close();

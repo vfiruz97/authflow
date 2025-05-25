@@ -326,19 +326,35 @@ final exception = AuthException(
 
 ### Custom Provider
 
-Implement `AuthProvider`, return an `AuthResult`, and register via `AuthRegistry`:
+Implement `AuthProvider`, return an `AuthResult`, and add it to your `AuthConfig`:
 
 ```dart
 class MyProvider extends AuthProvider {
   @override
-  Future<AuthResult?> login({Map<String, dynamic>? credentials}) async {
-    // your logic
+  String get providerId => 'my_provider';
+
+  @override
+  Future<AuthResult> login(Map<String, dynamic> credentials) async {
+    // Implement your authentication logic here
+    // ...
+
+    // Return AuthResult with user and token
+    return AuthResult(user: customUser, token: customToken);
   }
 
   // ...logout(), isAuthenticated(), currentUser()
 }
 
-AuthRegistry.register('my_provider', MyProvider());
+// Configure AuthManager with your custom provider
+await AuthManager().configure(AuthConfig(
+  providers: [
+    MyProvider(),
+    AnonymousAuthProvider(),
+  ],
+  // Optionally set your custom provider as default
+  defaultProviderId: 'my_provider',
+  storage: SecureAuthStorage.withDefaultUser(),
+));
 ```
 
 ### Custom User or Storage
