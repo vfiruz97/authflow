@@ -11,6 +11,10 @@ class MyCustomEmailPasswordAuthProvider extends EmailPasswordAuthProvider {
   final String baseUrl;
 
   @override
+  // The providerId is a unique identifier for this provider.
+  // It's used in AuthManager to find the right provider for login operations.
+  // This ID can be referenced in loginWithProvider() calls and is used to match
+  // the defaultProviderId in AuthConfig.
   String get providerId => 'my_auth_provider';
 
   MyCustomEmailPasswordAuthProvider({required this.baseUrl});
@@ -64,7 +68,13 @@ class _MyAppState extends State<MyApp> {
     await AuthManager().configure(
       AuthConfig(
         providers: [anonymousProvider, emailProvider],
+        // The defaultProviderId tells AuthManager which provider to use by default
+        // when login() is called without specifying a provider ID.
+        // This matches the ID from MyCustomEmailPasswordAuthProvider's providerId getter.
         defaultProviderId: 'my_auth_provider',
+        // SecureAuthStorage persists user and token data between app restarts.
+        // withDefaultUser() configures it to use the DefaultAuthUser implementation.
+        // You could also implement a custom AuthStorage for different persistence needs.
         storage: SecureAuthStorage.withDefaultUser(),
       ),
     );
@@ -85,9 +95,21 @@ class AuthScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Using AuthBuilder to conditionally render based on auth state
     return AuthBuilder(
+      // The authenticated callback provides both user and token objects
       authenticated: (context, user, token) => HomeScreen(user: user, token: token),
+      // The unauthenticated callback shows the login screen
       unauthenticated: (context) => const LoginScreen(),
+      // With buildWhen, we can control precisely when the widget rebuilds
+      buildWhen: (previous, current) {
+        // Don't rebuild during login attempts (when going from authenticated/unauthenticated to loading)
+        if (current.status == AuthStatus.loading && previous.status != AuthStatus.loading) {
+          return false;
+        }
+        // Otherwise, rebuild on state changes
+        return true;
+      },
     );
   }
 }
@@ -119,7 +141,9 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      // Use the default provider (my_custom_email_password) as configured in AuthConfig
+      // Uses the default provider (configured as 'my_auth_provider')
+      // This shows how AuthManager.login() automatically uses the defaultProviderId
+      // from the configuration when no specific provider is mentioned
       await AuthManager().login({'email': _emailController.text, 'password': _passwordController.text});
     } catch (e) {
       if (mounted) {
@@ -146,6 +170,8 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
+      // Uses a specific provider by ID rather than the default
+      // This approach allows you to use any registered provider explicitly
       await AuthManager().loginWithProvider('anonymous', {});
     } on AuthException catch (e) {
       if (mounted) {

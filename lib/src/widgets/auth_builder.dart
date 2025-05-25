@@ -23,6 +23,9 @@ class AuthBuilder extends StatelessWidget {
   /// The [AuthManager] instance to use
   final AuthManager? authManager;
 
+  /// Optional function that determines when the builder should rebuild
+  final bool Function(AuthStateRecord previous, AuthStateRecord current)? buildWhen;
+
   /// Creates a new [AuthBuilder] widget
   const AuthBuilder({
     super.key,
@@ -30,16 +33,23 @@ class AuthBuilder extends StatelessWidget {
     required this.unauthenticated,
     this.loading,
     this.authManager,
+    this.buildWhen,
   });
 
   /// Creates a combined stream of authentication state
   Stream<AuthStateRecord> _createCombinedStream(AuthManager manager) {
-    return Rx.combineLatest3<AuthStatus, AuthUser?, AuthToken?, AuthStateRecord>(
-      manager.statusStream,
-      manager.userStream,
-      manager.tokenStream,
-      (status, user, token) => (status: status, user: user, token: token),
-    ).distinct();
+    final baseStream =
+        Rx.combineLatest3<AuthStatus, AuthUser?, AuthToken?, AuthStateRecord>(
+          manager.statusStream,
+          manager.userStream,
+          manager.tokenStream,
+          (status, user, token) => (status: status, user: user, token: token),
+        ).distinct();
+    // Apply custom buildWhen logic if provided
+    if (buildWhen != null) {
+      return baseStream.distinct((p, n) => !buildWhen!(p, n));
+    }
+    return baseStream;
   }
 
   @override
