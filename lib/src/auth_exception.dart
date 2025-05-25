@@ -1,29 +1,5 @@
-import 'dart:async';
-import 'dart:io';
-
 /// Types of authentication exceptions that can occur in the authentication flow.
-enum AuthExceptionType {
-  /// Invalid credentials provided (wrong email/password, etc.)
-  invalidCredentials,
-
-  /// Required authentication credentials are missing
-  missingCredentials,
-
-  /// Provider specific error (varies based on provider implementation)
-  providerError,
-
-  /// Network-related error (connectivity issues, timeouts, etc.)
-  networkError,
-
-  /// Server-related error (backend issues, API errors, etc.)
-  serverError,
-
-  /// Custom error type for user-defined authentication errors
-  custom,
-
-  /// Unknown or unclassified error
-  unknown,
-}
+enum AuthExceptionType { credentials, provider, custom, unknown }
 
 /// Standardized exception class for authentication errors in the AuthFlow package.
 class AuthException implements Exception {
@@ -42,32 +18,9 @@ class AuthException implements Exception {
   /// Creates a new [AuthException] with the given message and type.
   const AuthException({required this.message, required this.type, this.error, this.details});
 
-  /// Factory constructor for exceptions caused by invalid credentials.
-  factory AuthException.invalidCredentials([String message = 'Invalid credentials provided']) {
-    return AuthException(message: message, type: AuthExceptionType.invalidCredentials);
-  }
-
-  /// Factory constructor for exceptions caused by missing credentials.
-  factory AuthException.missingCredentials([String message = 'Required credentials are missing']) {
-    return AuthException(message: message, type: AuthExceptionType.missingCredentials);
-  }
-
-  /// Factory constructor for network-related exceptions.
-  factory AuthException.network(Object error, [String? message]) {
-    return AuthException(
-      message: message ?? 'A network error occurred: ${error.toString()}',
-      error: error,
-      type: AuthExceptionType.networkError,
-    );
-  }
-
-  /// Factory constructor for server-related exceptions.
-  factory AuthException.server(Object error, [String? message]) {
-    return AuthException(
-      message: message ?? 'A server error occurred: ${error.toString()}',
-      error: error,
-      type: AuthExceptionType.serverError,
-    );
+  /// Factory constructor for exceptions caused by credential-related issues.
+  factory AuthException.credentials([String message = 'Invalid or missing credentials']) {
+    return AuthException(message: message, type: AuthExceptionType.credentials);
   }
 
   /// Factory constructor for provider-specific exceptions.
@@ -75,7 +28,7 @@ class AuthException implements Exception {
     return AuthException(
       message: message ?? 'Provider error ($providerId): ${error.toString()}',
       error: error,
-      type: AuthExceptionType.providerError,
+      type: AuthExceptionType.provider,
       details: {'providerId': providerId},
     );
   }
@@ -94,27 +47,10 @@ class AuthException implements Exception {
     );
   }
 
-  /// Factory constructor for converting various exceptions to [AuthException].
-  factory AuthException.from(Object error) {
+  /// Convert any exception to an AuthException
+  static AuthException from(Object error) {
     if (error is AuthException) {
       return error;
-    }
-
-    // Handle common exception types
-    if (error is FormatException) {
-      return AuthException(
-        message: 'Format error: ${error.message}',
-        error: error,
-        type: AuthExceptionType.missingCredentials,
-      );
-    } else if (error is SocketException || error is HttpException) {
-      return AuthException.network(error);
-    } else if (error is TimeoutException) {
-      return AuthException(
-        message: 'Operation timed out: ${error.message ?? ''}',
-        error: error,
-        type: AuthExceptionType.networkError,
-      );
     }
 
     // Default to unknown error

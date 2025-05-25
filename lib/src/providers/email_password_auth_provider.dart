@@ -30,11 +30,11 @@ abstract class EmailPasswordAuthProvider extends AuthProvider {
     final password = credentials['password'] as String?;
 
     if (email == null || email.isEmpty) {
-      throw AuthException.missingCredentials('Email is required');
+      throw AuthException.credentials('Email is required');
     }
 
     if (password == null || password.isEmpty) {
-      throw AuthException.missingCredentials('Password is required');
+      throw AuthException.credentials('Password is required');
     }
 
     // Call the implementation-specific authenticate method

@@ -68,13 +68,13 @@ void main() {
       // Missing email
       expect(
         () => provider.login({'password': 'test123'}),
-        throwsA(isA<AuthException>().having((e) => e.type, 'exception type', AuthExceptionType.missingCredentials)),
+        throwsA(isA<AuthException>().having((e) => e.type, 'exception type', AuthExceptionType.credentials)),
       );
 
       // Missing password
       expect(
         () => provider.login({'email': 'test@example.com'}),
-        throwsA(isA<AuthException>().having((e) => e.type, 'exception type', AuthExceptionType.missingCredentials)),
+        throwsA(isA<AuthException>().having((e) => e.type, 'exception type', AuthExceptionType.credentials)),
       );
     });
 

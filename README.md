@@ -162,11 +162,6 @@ class MyCustomAuthProvider extends AuthProvider {
 
     return AuthResult(user: user, token: token);
   }
-
-  @override
-  Future<void> logout() async {
-    // Implement any custom logout logic here
-  }
 }
 ```
 
@@ -245,21 +240,13 @@ try {
   print('Error type: ${e.type}');
   print('Error message: ${e.message}');
 
-  // Access original error (if any)
-  if (e.error != null) {
-    print('Original error: ${e.error}');
-  }
-
   // Handle specific error types
   switch (e.type) {
-    case AuthExceptionType.missingCredentials:
-      showMissingFieldsError(e.message);
+    case AuthExceptionType.credentials:
+      showCredentialsError(e.message);
       break;
-    case AuthExceptionType.invalidCredentials:
-      showInvalidCredentialsError();
-      break;
-    case AuthExceptionType.networkError:
-      showNetworkError();
+    case AuthExceptionType.provider:
+      showProviderError(e.message);
       break;
     // Handle other error types...
     default:
@@ -270,50 +257,32 @@ try {
 
 ### Available Exception Types
 
-The `AuthExceptionType` enum provides the following core error categories:
+The `AuthExceptionType` enum provides these core error categories:
 
-- `invalidCredentials`: Wrong password, email not found, etc.
-- `missingCredentials`: Required fields (email, password) missing
-- `providerError`: Provider-specific errors (e.g., provider not found)
-- `networkError`: Network connectivity issues, timeouts
-- `serverError`: Backend errors, API failures
+- `credentials`: Issues with credentials (missing, invalid, etc.)
+- `provider`: Provider-specific errors (provider not found, implementation errors)
 - `custom`: For user-defined authentication errors
 - `unknown`: Unclassified errors
 
 ### Creating Custom Exceptions
 
-You can create custom auth exceptions:
-
 ```dart
 // Using a factory constructor
-final exception = AuthException.invalidCredentials('Custom error message');
+final exception = AuthException.credentials('Password is too weak');
 
-// Or the generic constructor
-final exception = AuthException(
-  message: 'Custom error message',
-  type: AuthExceptionType.networkError,
-  error: originalError,
-  details: {'retry': true, 'timeout': 30},
+// For provider-specific errors
+final providerException = AuthException.provider(
+  'google_signin',
+  originalError,
+  'Failed to authenticate with Google'
 );
 
-// Using the custom type for your own authentication errors
+// For your own custom authentication errors
 final myException = AuthException.custom(
   'Account requires verification',
   error: originalError,
-  details: {'accountId': '123', 'verificationType': 'email'},
+  details: {'verificationType': 'email'},
 );
-
-// Then handle it in your code
-switch (exception.type) {
-  case AuthExceptionType.custom:
-    // Check details for specific custom error info
-    final errorType = exception.details?['verificationType'];
-    if (errorType == 'email') {
-      showEmailVerificationScreen();
-    }
-    break;
-  // Handle other cases...
-}
 ```
 
 ---

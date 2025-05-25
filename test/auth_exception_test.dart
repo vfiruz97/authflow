@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:authflow/authflow.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -17,20 +15,19 @@ void main() {
       expect(exception.error, isNotNull);
     });
 
-    test('from() method converts FormatException to missingCredentials', () {
-      final formatException = FormatException('Invalid format');
-      final authException = AuthException.from(formatException);
+    test('from() static method passes through an existing AuthException', () {
+      final original = AuthException.credentials('Test credentials error');
+      final result = AuthException.from(original);
 
-      expect(authException.type, equals(AuthExceptionType.missingCredentials));
-      expect(authException.error, equals(formatException));
+      expect(result, equals(original));
     });
 
-    test('from() method converts network exceptions correctly', () {
-      final socketException = SocketException('Connection failed');
-      final authException = AuthException.from(socketException);
+    test('from() static method converts any error to unknown type', () {
+      final randomError = Exception('Random error');
+      final authException = AuthException.from(randomError);
 
-      expect(authException.type, equals(AuthExceptionType.networkError));
-      expect(authException.error, equals(socketException));
+      expect(authException.type, equals(AuthExceptionType.unknown));
+      expect(authException.error, equals(randomError));
     });
 
     test('all exception types are distinguishable in switch statements', () {
@@ -39,19 +36,10 @@ void main() {
         var handled = false;
 
         switch (e.type) {
-          case AuthExceptionType.invalidCredentials:
+          case AuthExceptionType.credentials:
             handled = true;
             break;
-          case AuthExceptionType.missingCredentials:
-            handled = true;
-            break;
-          case AuthExceptionType.providerError:
-            handled = true;
-            break;
-          case AuthExceptionType.networkError:
-            handled = true;
-            break;
-          case AuthExceptionType.serverError:
+          case AuthExceptionType.provider:
             handled = true;
             break;
           case AuthExceptionType.custom:

@@ -98,19 +98,10 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() {
         // Handle specific exception types differently
         switch (e.type) {
-          case AuthExceptionType.missingCredentials:
-            _errorMessage = 'Please fill in all required fields: ${e.message}';
+          case AuthExceptionType.credentials:
+            _errorMessage = 'Invalid or missing credentials: ${e.message}';
             break;
-          case AuthExceptionType.invalidCredentials:
-            _errorMessage = 'Invalid login credentials. Please try again.';
-            break;
-          case AuthExceptionType.networkError:
-            _errorMessage = 'Network error. Please check your connection.';
-            break;
-          case AuthExceptionType.serverError:
-            _errorMessage = 'Server error occurred. Please try again later.';
-            break;
-          case AuthExceptionType.providerError:
+          case AuthExceptionType.provider:
             _errorMessage = 'Provider error: ${e.message}';
             break;
           case AuthExceptionType.custom:

@@ -130,7 +130,7 @@ void main() {
 
       expect(
         () => authManager.loginWithProvider('nonexistent_provider', {}),
-        throwsA(isA<AuthException>().having((e) => e.type, 'exception type', AuthExceptionType.providerError)),
+        throwsA(isA<AuthException>().having((e) => e.type, 'exception type', AuthExceptionType.provider)),
       );
     });
 
@@ -141,7 +141,7 @@ void main() {
 
       expect(
         () => authManager.login({}),
-        throwsA(isA<AuthException>().having((e) => e.type, 'exception type', AuthExceptionType.providerError)),
+        throwsA(isA<AuthException>().having((e) => e.type, 'exception type', AuthExceptionType.provider)),
       );
     });
   });
