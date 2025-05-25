@@ -101,7 +101,9 @@ class AuthScreen extends StatelessWidget {
       authenticated: (context, user, token) => HomeScreen(user: user, token: token),
       // The unauthenticated callback shows the login screen
       unauthenticated: (context) => const LoginScreen(),
-      // With buildWhen, we can control precisely when the widget rebuilds
+      // This buildWhen parameter solves the problem of the login screen disappearing during login attempts.
+      // Without it, AuthBuilder would rebuild and show a loading state when logging in,
+      // which would cause the login form to vanish temporarily.
       buildWhen: (previous, current) {
         // Don't rebuild during login attempts (when going from authenticated/unauthenticated to loading)
         if (current.status == AuthStatus.loading && previous.status != AuthStatus.loading) {
@@ -134,18 +136,19 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  Future<void> _loginWithEmailPassword() async {
+  // Helper method to handle login attempts
+  Future<void> _performLogin(Future<void> Function() loginFunction) async {
+    // Set loading state and clear previous errors
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
     try {
-      // Uses the default provider (configured as 'my_auth_provider')
-      // This shows how AuthManager.login() automatically uses the defaultProviderId
-      // from the configuration when no specific provider is mentioned
-      await AuthManager().login({'email': _emailController.text, 'password': _passwordController.text});
+      // Perform the login operation
+      await loginFunction();
     } catch (e) {
+      // Handle errors if the widget is still mounted
       if (mounted) {
         setState(() {
           _errorMessage = switch (e) {
@@ -155,6 +158,7 @@ class _LoginScreenState extends State<LoginScreen> {
         });
       }
     } finally {
+      // Reset loading state if the widget is still mounted
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -163,29 +167,22 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Future<void> _loginAnonymously() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
+  // Login with email/password using the default provider
+  Future<void> _loginWithEmailPassword() async {
+    await _performLogin(() {
+      // Uses the default provider (configured as 'my_auth_provider')
+      // AuthManager.login() automatically uses the defaultProviderId from configuration
+      return AuthManager().login({'email': _emailController.text, 'password': _passwordController.text});
     });
+  }
 
-    try {
+  // Login anonymously using the anonymous provider
+  Future<void> _loginAnonymously() async {
+    await _performLogin(() {
       // Uses a specific provider by ID rather than the default
       // This approach allows you to use any registered provider explicitly
-      await AuthManager().loginWithProvider('anonymous', {});
-    } on AuthException catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorMessage = 'Login failed: ${e.message}';
-        });
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
+      return AuthManager().loginWithProvider('anonymous', {});
+    });
   }
 
   @override
@@ -237,6 +234,29 @@ class HomeScreen extends StatelessWidget {
 
   const HomeScreen({super.key, required this.user, required this.token});
 
+  // Helper to create info cards
+  Widget _buildInfoCard(String title, List<Widget> children) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            ...children,
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Format token for display (show first and last 4 chars)
+  String _formatToken(String token) {
+    if (token.length <= 8) return token;
+    return '${token.substring(0, 4)}...${token.substring(token.length - 4)}';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -254,44 +274,26 @@ class HomeScreen extends StatelessWidget {
               style: Theme.of(context).textTheme.headlineMedium,
             ),
             const SizedBox(height: 16),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('User Information', style: Theme.of(context).textTheme.titleLarge),
-                    const SizedBox(height: 8),
-                    Text('ID: ${user.id}'),
-                    if (user.email != null) Text('Email: ${user.email}'),
-                    if (user.displayName != null) Text('Name: ${user.displayName}'),
-                    Text('Anonymous: ${user.isAnonymous}'),
-                  ],
-                ),
-              ),
-            ),
+
+            // User information card
+            _buildInfoCard('User Information', [
+              Text('ID: ${user.id}'),
+              if (user.email != null) Text('Email: ${user.email}'),
+              if (user.displayName != null) Text('Name: ${user.displayName}'),
+              Text('Anonymous: ${user.isAnonymous}'),
+            ]),
+
             const SizedBox(height: 16),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Token Information', style: Theme.of(context).textTheme.titleLarge),
-                    const SizedBox(height: 8),
-                    Text('Access Token: ${_formatToken(token.accessToken)}'),
-                  ],
-                ),
-              ),
-            ),
+
+            // Token information card
+            _buildInfoCard('Token Information', [
+              Text('Access Token: ${_formatToken(token.accessToken)}'),
+              if (token.refreshToken != null) Text('Refresh Token: ${_formatToken(token.refreshToken!)}'),
+              if (token.expiresAt != null) Text('Expires: ${token.expiresAt!.toString()}'),
+            ]),
           ],
         ),
       ),
     );
-  }
-
-  String _formatToken(String token) {
-    if (token.length <= 8) return token;
-    return '${token.substring(0, 4)}...${token.substring(token.length - 4)}';
   }
 }
