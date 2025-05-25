@@ -39,7 +39,7 @@ class AuthBuilder extends StatelessWidget {
       manager.userStream,
       manager.tokenStream,
       (status, user, token) => (status: status, user: user, token: token),
-    );
+    ).distinct();
   }
 
   @override

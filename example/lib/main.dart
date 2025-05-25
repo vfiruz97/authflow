@@ -11,7 +11,7 @@ class MyCustomEmailPasswordAuthProvider extends EmailPasswordAuthProvider {
   final String baseUrl;
 
   @override
-  String get providerId => 'my_custom_email_password';
+  String get providerId => 'my_auth_provider';
 
   MyCustomEmailPasswordAuthProvider({required this.baseUrl});
 
@@ -58,13 +58,13 @@ class _MyAppState extends State<MyApp> {
   Future<void> _configureAuth() async {
     final anonymousProvider = AnonymousAuthProvider();
     final emailProvider = MyCustomEmailPasswordAuthProvider(
-      baseUrl: 'https://raw.githubusercontent.com/vfiruz97/authflow/refs/heads/dev/example/assets',
+      baseUrl: 'https://raw.githubusercontent.com/vfiruz97/authflow/refs/heads/main/example/assets',
     );
 
     await AuthManager().configure(
       AuthConfig(
         providers: [anonymousProvider, emailProvider],
-        defaultProviderId: 'my_custom_email_password',
+        defaultProviderId: 'my_auth_provider',
         storage: SecureAuthStorage.withDefaultUser(),
       ),
     );

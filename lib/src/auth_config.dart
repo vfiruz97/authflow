@@ -12,6 +12,7 @@ class AuthConfig {
   /// The ID of the default authentication provider
   ///
   /// If not specified, the first provider in the list will be used.
+  ///
   /// Important: This enables AuthManager().login() to use this provider
   final String? defaultProviderId;
 
