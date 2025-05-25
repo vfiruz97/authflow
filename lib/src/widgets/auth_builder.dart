@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:rxdart/rxdart.dart';
 
 import '../auth_manager.dart';
 import '../auth_status.dart';
 import '../auth_token.dart';
 import '../auth_user.dart';
+
+/// Record that holds the combined authentication state
+typedef AuthStateRecord = ({AuthStatus status, AuthUser? user, AuthToken? token});
 
 /// A builder widget that reacts to authentication state changes.
 class AuthBuilder extends StatelessWidget {
@@ -28,44 +32,44 @@ class AuthBuilder extends StatelessWidget {
     this.authManager,
   });
 
+  /// Creates a combined stream of authentication state
+  Stream<AuthStateRecord> _createCombinedStream(AuthManager manager) {
+    return Rx.combineLatest3<AuthStatus, AuthUser?, AuthToken?, AuthStateRecord>(
+      manager.statusStream,
+      manager.userStream,
+      manager.tokenStream,
+      (status, user, token) => (status: status, user: user, token: token),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final manager = authManager ?? AuthManager();
 
-    return StreamBuilder<AuthStatus>(
-      stream: manager.statusStream,
-      builder: (context, statusSnapshot) {
-        // Show loading widget if status is loading or stream hasn't emitted yet
-        if (statusSnapshot.connectionState == ConnectionState.waiting || statusSnapshot.data == AuthStatus.loading) {
+    return StreamBuilder<AuthStateRecord>(
+      stream: _createCombinedStream(manager),
+      builder: (context, snapshot) {
+        // Show loading widget if connection is waiting or status is loading
+        if (snapshot.connectionState == ConnectionState.waiting ||
+            !snapshot.hasData ||
+            snapshot.data?.status == AuthStatus.loading) {
           return loading?.call(context) ?? const Center(child: CircularProgressIndicator());
         }
 
-        // If not authenticated, show unauthenticated widget
-        if (statusSnapshot.data != AuthStatus.authenticated) {
+        final authState = snapshot.data!;
+
+        // If not authenticated or missing user/token, show unauthenticated widget
+        if (authState.status != AuthStatus.authenticated || authState.user == null || authState.token == null) {
           return unauthenticated(context);
         }
 
-        // If authenticated, get user and token and build authenticated view
-        return StreamBuilder<AuthUser?>(
-          stream: manager.userStream,
-          builder: (context, userSnapshot) {
-            return StreamBuilder<AuthToken?>(
-              stream: manager.tokenStream,
-              builder: (context, tokenSnapshot) {
-                // If user or token is not available, show unauthenticated view
-                if (!userSnapshot.hasData ||
-                    userSnapshot.data == null ||
-                    !tokenSnapshot.hasData ||
-                    tokenSnapshot.data == null) {
-                  return unauthenticated(context);
-                }
+        // If token is expired, show unauthenticated widget
+        if (authState.token!.isExpired) {
+          return unauthenticated(context);
+        }
 
-                // Build authenticated view with user and token
-                return authenticated(context, userSnapshot.data!, tokenSnapshot.data!);
-              },
-            );
-          },
-        );
+        // Build authenticated view with user and token
+        return authenticated(context, authState.user!, authState.token!);
       },
     );
   }

@@ -110,8 +110,15 @@ class _LoginScreenState extends State<LoginScreen> {
           case AuthExceptionType.serverError:
             _errorMessage = 'Server error occurred. Please try again later.';
             break;
-          default:
-            _errorMessage = 'Login failed: ${e.message}';
+          case AuthExceptionType.providerError:
+            _errorMessage = 'Provider error: ${e.message}';
+            break;
+          case AuthExceptionType.custom:
+            _errorMessage = 'Custom error: ${e.message}';
+            break;
+          case AuthExceptionType.unknown:
+            _errorMessage = 'Unknown error: ${e.message}';
+            break;
         }
       });
     } catch (e) {

@@ -9,35 +9,17 @@ enum AuthExceptionType {
   /// Required authentication credentials are missing
   missingCredentials,
 
-  /// User not found during authentication
-  userNotFound,
-
-  /// Network error occurred during authentication
-  networkError,
-
-  /// Server error occurred during authentication
-  serverError,
-
-  /// Session expired or invalid token
-  sessionExpired,
-
-  /// User is not authenticated for an operation requiring authentication
-  unauthenticated,
-
   /// Provider specific error (varies based on provider implementation)
   providerError,
 
-  /// Token validation or refresh failed
-  tokenError,
+  /// Network-related error (connectivity issues, timeouts, etc.)
+  networkError,
 
-  /// User account is disabled, locked, or requires additional verification
-  accountIssue,
+  /// Server-related error (backend issues, API errors, etc.)
+  serverError,
 
-  /// Permission denied or insufficient privileges
-  permissionDenied,
-
-  /// Rate limiting or too many requests
-  tooManyRequests,
+  /// Custom error type for user-defined authentication errors
+  custom,
 
   /// Unknown or unclassified error
   unknown,
@@ -70,11 +52,6 @@ class AuthException implements Exception {
     return AuthException(message: message, type: AuthExceptionType.missingCredentials);
   }
 
-  /// Factory constructor for exceptions caused by user not found.
-  factory AuthException.userNotFound([String message = 'User not found']) {
-    return AuthException(message: message, type: AuthExceptionType.userNotFound);
-  }
-
   /// Factory constructor for network-related exceptions.
   factory AuthException.network(Object error, [String? message]) {
     return AuthException(
@@ -93,16 +70,6 @@ class AuthException implements Exception {
     );
   }
 
-  /// Factory constructor for session expired exceptions.
-  factory AuthException.sessionExpired([String message = 'Your session has expired. Please log in again.']) {
-    return AuthException(message: message, type: AuthExceptionType.sessionExpired);
-  }
-
-  /// Factory constructor for unauthenticated exceptions.
-  factory AuthException.unauthenticated([String message = 'Authentication required for this operation']) {
-    return AuthException(message: message, type: AuthExceptionType.unauthenticated);
-  }
-
   /// Factory constructor for provider-specific exceptions.
   factory AuthException.provider(String providerId, Object error, [String? message]) {
     return AuthException(
@@ -113,28 +80,9 @@ class AuthException implements Exception {
     );
   }
 
-  /// Factory constructor for token-related exceptions.
-  factory AuthException.token([String message = 'Token validation or refresh failed']) {
-    return AuthException(message: message, type: AuthExceptionType.tokenError);
-  }
-
-  /// Factory constructor for account-related exceptions.
-  factory AuthException.accountIssue(String issue, [String? message]) {
-    return AuthException(
-      message: message ?? 'Account issue: $issue',
-      type: AuthExceptionType.accountIssue,
-      details: {'issue': issue},
-    );
-  }
-
-  /// Factory constructor for permission-related exceptions.
-  factory AuthException.permissionDenied([String message = 'Permission denied']) {
-    return AuthException(message: message, type: AuthExceptionType.permissionDenied);
-  }
-
-  /// Factory constructor for rate limiting exceptions.
-  factory AuthException.tooManyRequests([String message = 'Too many requests. Please try again later.']) {
-    return AuthException(message: message, type: AuthExceptionType.tooManyRequests);
+  /// Factory constructor for custom exceptions defined by the user.
+  factory AuthException.custom(String message, {Object? error, Map<String, dynamic>? details}) {
+    return AuthException(message: message, type: AuthExceptionType.custom, error: error, details: details);
   }
 
   /// Factory constructor for unknown exceptions.

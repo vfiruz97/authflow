@@ -29,7 +29,9 @@ abstract class AuthProvider {
   ///
   /// This method is called when the user explicitly logs out.
   /// It should perform any provider-specific cleanup.
-  Future<void> logout();
+  Future<void> logout() async {
+    // Perform any necessary cleanup for the provider
+  }
 
   /// Checks if the current session is valid
   ///

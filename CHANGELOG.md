@@ -1,4 +1,4 @@
-## 0.2.0 - May 20, 2025
+## 0.3.0 - May 25, 2025
 
 - Implemented standardized exception handling with `AuthException` class
 - Added typed exception factory constructors for various authentication scenarios
@@ -8,6 +8,8 @@
 - Added test mode support to `AuthEventBus` for improved testability
 - Fixed event handling in tests to avoid cross-test interference
 - Add optional expiration duration for anonymous sessions in AnonymousAuthProvider
+- Improved documentation and examples for exception handling
+- Enhanced `AuthBuilder` with optimized stream handling and token expiration check
 
 ## 0.0.1 - May 19, 2025
 

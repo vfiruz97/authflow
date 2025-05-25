@@ -84,9 +84,4 @@ class MockEmailPasswordAuthProvider extends EmailPasswordAuthProvider {
 
     return AuthResult(user: user, token: token);
   }
-
-  @override
-  Future<void> logout() async {
-    // No specific logout functionality for mock provider
-  }
 }

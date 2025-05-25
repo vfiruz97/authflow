@@ -15,23 +15,6 @@
 
 ---
 
-## 📦 Installation
-
-Add to your `pubspec.yaml`:
-
-```yaml
-dependencies:
-  authflow: ^0.0.1
-```
-
-Then run:
-
-```bash
-flutter pub get
-```
-
----
-
 ## 🛠️ Configuration
 
 Set up your providers and storage with `AuthConfig`, then initialize the system:
@@ -287,20 +270,14 @@ try {
 
 ### Available Exception Types
 
-The `AuthExceptionType` enum provides the following error categories:
+The `AuthExceptionType` enum provides the following core error categories:
 
 - `invalidCredentials`: Wrong password, email not found, etc.
 - `missingCredentials`: Required fields (email, password) missing
-- `userNotFound`: User doesn't exist
-- `networkError`: Network connectivity issues
-- `serverError`: Server-side errors
-- `sessionExpired`: Token expired or invalid
-- `unauthenticated`: Authentication required
-- `providerError`: Provider-specific errors
-- `tokenError`: Token validation/refresh failures
-- `accountIssue`: Account disabled, locked, etc.
-- `permissionDenied`: Insufficient privileges
-- `tooManyRequests`: Rate limiting
+- `providerError`: Provider-specific errors (e.g., provider not found)
+- `networkError`: Network connectivity issues, timeouts
+- `serverError`: Backend errors, API failures
+- `custom`: For user-defined authentication errors
 - `unknown`: Unclassified errors
 
 ### Creating Custom Exceptions
@@ -318,6 +295,25 @@ final exception = AuthException(
   error: originalError,
   details: {'retry': true, 'timeout': 30},
 );
+
+// Using the custom type for your own authentication errors
+final myException = AuthException.custom(
+  'Account requires verification',
+  error: originalError,
+  details: {'accountId': '123', 'verificationType': 'email'},
+);
+
+// Then handle it in your code
+switch (exception.type) {
+  case AuthExceptionType.custom:
+    // Check details for specific custom error info
+    final errorType = exception.details?['verificationType'];
+    if (errorType == 'email') {
+      showEmailVerificationScreen();
+    }
+    break;
+  // Handle other cases...
+}
 ```
 
 ---
