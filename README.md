@@ -27,10 +27,14 @@ final emailProvider = MockEmailPasswordAuthProvider();
 // Configure auth manager
 await AuthManager().configure(AuthConfig(
   providers: [anonymousProvider, emailProvider],
-  defaultProviderId: 'email_password',
+  defaultProviderId: 'email_password', // Set the default provider
   storage: SecureAuthStorage.withDefaultUser(),
 ));
 ```
+
+> **Note:** Setting `defaultProviderId` is important when using `AuthManager().login()`.
+> Without it, the system will try to use the current provider (if authenticated) or
+> fall back to the first registered provider.
 
 ---
 
@@ -39,7 +43,7 @@ await AuthManager().configure(AuthConfig(
 ### Login
 
 ```dart
-// Login with default provider
+// Login with default provider (as configured in AuthConfig)
 final result = await AuthManager().login({
   'email': 'user@example.com',
   'password': 'secret',

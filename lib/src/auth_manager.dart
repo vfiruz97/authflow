@@ -30,6 +30,9 @@ class AuthManager {
   // Storage instance
   AuthStorage? _storage;
 
+  // Default provider ID from configuration
+  String? _defaultProviderId;
+
   // Provider registry
   final AuthRegistry _registry = AuthRegistry();
 
@@ -40,16 +43,16 @@ class AuthManager {
   AuthManager._();
 
   /// Stream of authentication status changes
-  Stream<AuthStatus> get statusStream => _statusController.stream;
+  Stream<AuthStatus> get statusStream => _statusController.stream.distinct();
 
   /// Stream of authenticated user changes
-  Stream<AuthUser?> get userStream => _userController.stream;
+  Stream<AuthUser?> get userStream => _userController.stream.distinct();
 
   /// Stream of authentication token changes
-  Stream<AuthToken?> get tokenStream => _tokenController.stream;
+  Stream<AuthToken?> get tokenStream => _tokenController.stream.distinct();
 
   /// Stream of provider ID changes
-  Stream<String?> get providerIdStream => _providerIdController.stream;
+  Stream<String?> get providerIdStream => _providerIdController.stream.distinct();
 
   /// Current authentication status
   AuthStatus get status => _statusController.value;
@@ -71,6 +74,7 @@ class AuthManager {
   /// This must be called before using any authentication functionality.
   Future<void> configure(AuthConfig config) async {
     _storage = config.storage;
+    _defaultProviderId = config.defaultProviderId;
 
     // Set initial state to loading
     _statusController.add(AuthStatus.loading);
@@ -86,25 +90,29 @@ class AuthManager {
 
   /// Logs in with the default provider and the given credentials
   Future<AuthResult> login(Map<String, dynamic> credentials) async {
-    // Get the default provider from the registry
-    final providerId = _providerIdController.value;
-    AuthProvider provider;
+    // Try to use the configured default provider first
+    String? providerId = _defaultProviderId;
 
-    if (providerId != null && _registry.hasProvider(providerId)) {
-      provider = _registry.getProvider(providerId)!;
-    } else {
-      // No provider selected, use the first available one
-      if (_registry.providers.isEmpty) {
-        throw AuthException.provider(
-          'default',
-          Exception('No providers registered'),
-          'No authentication providers registered',
-        );
-      }
-      provider = _registry.providers.first;
+    // If no default provider is configured, try the current provider
+    if (providerId == null || !_registry.hasProvider(providerId)) {
+      providerId = currentProviderId;
     }
 
-    return loginWithProvider(provider.providerId, credentials);
+    // If we have a valid provider ID, use it
+    if (providerId != null && _registry.hasProvider(providerId)) {
+      return loginWithProvider(providerId, credentials);
+    }
+
+    // No default or current provider, use the first available one
+    if (_registry.providers.isEmpty) {
+      throw AuthException.provider(
+        'default',
+        Exception('No providers registered'),
+        'No authentication providers registered',
+      );
+    }
+
+    return loginWithProvider(_registry.providers.first.providerId, credentials);
   }
 
   /// Logs in with a specific provider and the given credentials
@@ -190,8 +198,8 @@ class AuthManager {
         return;
       }
 
-      // Get provider ID from storage or use the default
-      final providerId = currentProviderId ?? _registry.providers.firstOrNull?.providerId;
+      // Get provider ID from storage, default provider, or use the first available
+      String? providerId = currentProviderId ?? _defaultProviderId ?? _registry.providers.firstOrNull?.providerId;
 
       // If we have a provider, check if the session is valid
       if (providerId != null) {

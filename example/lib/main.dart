@@ -10,6 +10,9 @@ void main() => runApp(const MyApp());
 class MyCustomEmailPasswordAuthProvider extends EmailPasswordAuthProvider {
   final String baseUrl;
 
+  @override
+  String get providerId => 'my_custom_email_password';
+
   MyCustomEmailPasswordAuthProvider({required this.baseUrl});
 
   @override
@@ -55,11 +58,15 @@ class _MyAppState extends State<MyApp> {
   Future<void> _configureAuth() async {
     final anonymousProvider = AnonymousAuthProvider();
     final emailProvider = MyCustomEmailPasswordAuthProvider(
-      baseUrl: 'https://raw.githubusercontent.com/vfiruz97/authflow/main/example/assets',
+      baseUrl: 'https://raw.githubusercontent.com/vfiruz97/authflow/refs/heads/dev/example/assets',
     );
 
     await AuthManager().configure(
-      AuthConfig(providers: [anonymousProvider, emailProvider], storage: SecureAuthStorage.withDefaultUser()),
+      AuthConfig(
+        providers: [anonymousProvider, emailProvider],
+        defaultProviderId: 'my_custom_email_password',
+        storage: SecureAuthStorage.withDefaultUser(),
+      ),
     );
   }
 
@@ -79,7 +86,7 @@ class AuthScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AuthBuilder(
-      authenticated: (context, user, token) => HomeScreen(user: user),
+      authenticated: (context, user, token) => HomeScreen(user: user, token: token),
       unauthenticated: (context) => const LoginScreen(),
     );
   }
@@ -112,15 +119,13 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      await AuthManager().loginWithProvider('email_password', {
-        'email': _emailController.text,
-        'password': _passwordController.text,
-      });
+      // Use the default provider (my_custom_email_password) as configured in AuthConfig
+      await AuthManager().login({'email': _emailController.text, 'password': _passwordController.text});
     } catch (e) {
       if (mounted) {
         setState(() {
           _errorMessage = switch (e) {
-            AuthException e => 'Auth error (${e.type}): ${e.message}',
+            AuthException ae => 'Auth error (${ae.type}): ${ae.message}',
             _ => 'Error: ${e.toString()}',
           };
         });
@@ -170,7 +175,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Error message
                     if (_errorMessage != null)
                       Container(
                         margin: const EdgeInsets.only(bottom: 16),
@@ -179,7 +183,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: Text(_errorMessage!, style: TextStyle(color: Colors.red.shade900)),
                       ),
 
-                    // Login form
                     TextField(
                       controller: _emailController,
                       decoration: const InputDecoration(labelText: 'Email', border: OutlineInputBorder()),
@@ -204,8 +207,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
 class HomeScreen extends StatelessWidget {
   final AuthUser user;
+  final AuthToken token;
 
-  const HomeScreen({super.key, required this.user});
+  const HomeScreen({super.key, required this.user, required this.token});
 
   @override
   Widget build(BuildContext context) {
@@ -224,8 +228,6 @@ class HomeScreen extends StatelessWidget {
               style: Theme.of(context).textTheme.headlineMedium,
             ),
             const SizedBox(height: 16),
-
-            // User information
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -242,30 +244,19 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
             ),
-
             const SizedBox(height: 16),
-
-            // Token information
-            StreamBuilder<AuthToken?>(
-              stream: AuthManager().tokenStream,
-              builder: (context, snapshot) {
-                final token = snapshot.data;
-                if (token == null) return const SizedBox();
-
-                return Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Token Information', style: Theme.of(context).textTheme.titleLarge),
-                        const SizedBox(height: 8),
-                        Text('Access Token: ${_formatToken(token.accessToken)}'),
-                      ],
-                    ),
-                  ),
-                );
-              },
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Token Information', style: Theme.of(context).textTheme.titleLarge),
+                    const SizedBox(height: 8),
+                    Text('Access Token: ${_formatToken(token.accessToken)}'),
+                  ],
+                ),
+              ),
             ),
           ],
         ),

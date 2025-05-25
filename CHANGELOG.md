@@ -1,5 +1,6 @@
 ## 0.3.0 - May 25, 2025
 
+- Fixed `AuthManager.login()` to properly respect `defaultProviderId` from `AuthConfig`
 - Implemented standardized exception handling with `AuthException` class
 - Added typed exception factory constructors for various authentication scenarios
 - Updated providers to use consistent error handling
