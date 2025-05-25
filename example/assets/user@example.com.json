@@ -1,0 +1,13 @@
+{
+    "user": {
+        "id": "user-123",
+        "email": "user@example.com",
+        "password": "password123",
+        "displayName": "Demo User"
+    },
+    "token": {
+        "accessToken": "ey1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+        "refreshToken": null,
+        "expiresAt": null
+    }
+}

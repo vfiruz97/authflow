@@ -1,8 +1,39 @@
+import 'dart:convert';
+
 import 'package:authflow/authflow.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 
-void main() {
-  runApp(const MyApp());
+void main() => runApp(const MyApp());
+
+/// Enhanced HTTP-based authentication provider that demonstrates a more realistic
+/// authentication flow with proper error handling and multiple user support.
+class HttpEmailPasswordAuthProvider extends EmailPasswordAuthProvider {
+  final String loginUrl;
+
+  HttpEmailPasswordAuthProvider({required this.loginUrl});
+
+  @override
+  Future<AuthResult> authenticate(EmailPasswordCredentials credentials) async {
+    try {
+      final response = await http.get(Uri.parse("$loginUrl/${credentials.email}.json"));
+      final data = Map<String, dynamic>.from(jsonDecode(response.body));
+      final user = Map<String, dynamic>.from(data['user'] ?? {});
+      final token = Map<String, dynamic>.from(data['token'] ?? {});
+
+      if (user['email'] != credentials.email || user['password'] != credentials.password) {
+        throw AuthException.credentials('Invalid email or password');
+      }
+
+      final authUser = DefaultAuthUser(id: user['id'], email: user['email'], displayName: user['displayName']);
+      final authToken = AuthToken(accessToken: token['accessToken']);
+
+      return AuthResult(user: authUser, token: authToken);
+    } catch (e) {
+      throw AuthException.from(e);
+    }
+  }
 }
 
 class MyApp extends StatefulWidget {
@@ -22,7 +53,9 @@ class _MyAppState extends State<MyApp> {
   Future<void> _configureAuth() async {
     // Create auth providers
     final anonymousProvider = AnonymousAuthProvider();
-    final emailProvider = MockEmailPasswordAuthProvider();
+    final emailProvider = HttpEmailPasswordAuthProvider(
+      loginUrl: 'https://github.com/vfiruz97/authflow/tree/dev/example/assets',
+    );
 
     // Configure the AuthManager
     await AuthManager().configure(
@@ -50,7 +83,7 @@ class AuthScreen extends StatelessWidget {
         return HomeScreen(user: user);
       },
       unauthenticated: (context) {
-        return LoginScreen();
+        return const LoginScreen();
       },
     );
   }
@@ -68,6 +101,30 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   String? _errorMessage;
   bool _isLoading = false;
+  List<Map<String, dynamic>> _availableUsers = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAvailableUsers();
+  }
+
+  Future<void> _loadAvailableUsers() async {
+    try {
+      final jsonString = await rootBundle.loadString('assets/credentials.json');
+      final data = jsonDecode(jsonString);
+      final users = List<Map<String, dynamic>>.from(data['users']);
+
+      if (mounted) {
+        setState(() {
+          _availableUsers = users;
+        });
+      }
+    } catch (e) {
+      // Handle error silently - this is just a convenience feature
+      print('Could not load available users: $e');
+    }
+  }
 
   @override
   void dispose() {
@@ -95,27 +152,31 @@ class _LoginScreenState extends State<LoginScreen> {
         'password': _passwordController.text,
       });
     } on AuthException catch (e) {
-      setState(() {
-        // Handle specific exception types differently
-        switch (e.type) {
-          case AuthExceptionType.credentials:
-            _errorMessage = 'Invalid or missing credentials: ${e.message}';
-            break;
-          case AuthExceptionType.provider:
-            _errorMessage = 'Provider error: ${e.message}';
-            break;
-          case AuthExceptionType.custom:
-            _errorMessage = 'Custom error: ${e.message}';
-            break;
-          case AuthExceptionType.unknown:
-            _errorMessage = 'Unknown error: ${e.message}';
-            break;
-        }
-      });
+      if (mounted) {
+        setState(() {
+          // Handle specific exception types differently
+          switch (e.type) {
+            case AuthExceptionType.credentials:
+              _errorMessage = 'Invalid or missing credentials: ${e.message}';
+              break;
+            case AuthExceptionType.provider:
+              _errorMessage = 'Provider error: ${e.message}';
+              break;
+            case AuthExceptionType.custom:
+              _errorMessage = 'Custom error: ${e.message}';
+              break;
+            case AuthExceptionType.unknown:
+              _errorMessage = 'Unknown error: ${e.message}';
+              break;
+          }
+        });
+      }
     } catch (e) {
-      setState(() {
-        _errorMessage = 'Unexpected error: ${e.toString()}';
-      });
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Unexpected error: ${e.toString()}';
+        });
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -134,13 +195,17 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       await AuthManager().loginWithProvider('anonymous', {});
     } on AuthException catch (e) {
-      setState(() {
-        _errorMessage = 'Login failed: ${e.message}';
-      });
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Login failed: ${e.message}';
+        });
+      }
     } catch (e) {
-      setState(() {
-        _errorMessage = 'Unexpected error: ${e.toString()}';
-      });
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Unexpected error: ${e.toString()}';
+        });
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -153,39 +218,125 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Login')),
+      appBar: AppBar(title: const Text('Authflow Demo')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child:
             _isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (_errorMessage != null)
-                      Container(
-                        padding: const EdgeInsets.all(8.0),
-                        color: Colors.red.shade100,
-                        child: Text(_errorMessage!, style: TextStyle(color: Colors.red.shade900)),
+                : SingleChildScrollView(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Logo or title area
+                      const Icon(Icons.lock_outline, size: 64, color: Colors.deepPurple),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Welcome to Authflow',
+                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
                       ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: _emailController,
-                      decoration: const InputDecoration(labelText: 'Email', border: OutlineInputBorder()),
-                      keyboardType: TextInputType.emailAddress,
-                    ),
-                    const SizedBox(height: 16),
-                    TextField(
-                      controller: _passwordController,
-                      decoration: const InputDecoration(labelText: 'Password', border: OutlineInputBorder()),
-                      obscureText: true,
-                    ),
-                    const SizedBox(height: 24),
-                    ElevatedButton(onPressed: _loginWithEmailPassword, child: const Text('Login')),
-                    const SizedBox(height: 8),
-                    OutlinedButton(onPressed: _loginAnonymously, child: const Text('Continue as Guest')),
-                  ],
+                      const SizedBox(height: 4),
+                      const Text(
+                        'A flexible authentication package',
+                        style: TextStyle(fontSize: 16, color: Colors.grey),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Error message area
+                      if (_errorMessage != null)
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 16),
+                          padding: const EdgeInsets.all(8.0),
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.red.shade200),
+                          ),
+                          child: Text(_errorMessage!, style: TextStyle(color: Colors.red.shade900)),
+                        ),
+
+                      // Login form
+                      Card(
+                        elevation: 2,
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              TextField(
+                                controller: _emailController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Email',
+                                  border: OutlineInputBorder(),
+                                  prefixIcon: Icon(Icons.email_outlined),
+                                ),
+                                keyboardType: TextInputType.emailAddress,
+                              ),
+                              const SizedBox(height: 16),
+                              TextField(
+                                controller: _passwordController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Password',
+                                  border: OutlineInputBorder(),
+                                  prefixIcon: Icon(Icons.lock_outlined),
+                                ),
+                                obscureText: true,
+                              ),
+                              const SizedBox(height: 24),
+                              ElevatedButton(
+                                onPressed: _loginWithEmailPassword,
+                                style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12)),
+                                child: const Text('LOGIN', style: TextStyle(fontWeight: FontWeight.bold)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      // Available users section
+                      if (_availableUsers.isNotEmpty) ...[
+                        const SizedBox(height: 24),
+                        const Text(
+                          'Available Demo Users',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
+                        ...List.generate(_availableUsers.length, (index) {
+                          final user = _availableUsers[index];
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            child: ListTile(
+                              leading: const Icon(Icons.person_outline),
+                              title: Text(user['email']),
+                              subtitle: Text('Password: ${user['password']}'),
+                              trailing: IconButton(
+                                icon: const Icon(Icons.login),
+                                onPressed: () {
+                                  setState(() {
+                                    _emailController.text = user['email'];
+                                    _passwordController.text = user['password'];
+                                  });
+                                },
+                              ),
+                            ),
+                          );
+                        }),
+                      ],
+
+                      // Alternative login options
+                      const SizedBox(height: 24),
+                      OutlinedButton.icon(
+                        onPressed: _loginAnonymously,
+                        icon: const Icon(Icons.person_outline),
+                        label: const Text('Continue as Guest'),
+                        style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12)),
+                      ),
+                    ],
+                  ),
                 ),
       ),
     );
@@ -201,35 +352,41 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Home'),
+        title: const Text('Authflow Demo'),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
+            tooltip: 'Logout',
             onPressed: () async {
               try {
                 await AuthManager().logout();
               } on AuthException catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Logout error: ${e.message}')));
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Logout error: ${e.message}')));
+                }
               } catch (e) {
-                ScaffoldMessenger.of(
-                  context,
-                ).showSnackBar(SnackBar(content: Text('Unexpected error: ${e.toString()}')));
+                if (context.mounted) {
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text('Unexpected error: ${e.toString()}')));
+                }
               }
             },
           ),
         ],
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Welcome header
             Text(
               'Welcome, ${user.displayName ?? user.email ?? 'User ${user.id}'}!',
               style: Theme.of(context).textTheme.headlineMedium,
             ),
             const SizedBox(height: 16),
-            const Text('You are now logged in.'),
+            const Text('You are now logged in with Authflow.'),
             const SizedBox(height: 8),
             if (user.isAnonymous)
               const Text(
@@ -237,6 +394,8 @@ class HomeScreen extends StatelessWidget {
                 style: TextStyle(fontStyle: FontStyle.italic),
               ),
             const SizedBox(height: 24),
+
+            // User information card
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -253,7 +412,10 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
             ),
+
             const SizedBox(height: 16),
+
+            // Token information card with StreamBuilder
             StreamBuilder<AuthToken?>(
               stream: AuthManager().tokenStream,
               builder: (context, snapshot) {
@@ -280,6 +442,51 @@ class HomeScreen extends StatelessWidget {
                             color: token.isExpired ? Colors.red : Colors.green,
                             fontWeight: FontWeight.bold,
                           ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+
+            const SizedBox(height: 16),
+
+            // Auth status card
+            StreamBuilder<AuthStatus>(
+              stream: AuthManager().statusStream,
+              builder: (context, snapshot) {
+                final status = snapshot.data ?? AuthStatus.loading;
+
+                Color statusColor;
+                String statusText;
+
+                switch (status) {
+                  case AuthStatus.authenticated:
+                    statusColor = Colors.green;
+                    statusText = 'Authenticated';
+                    break;
+                  case AuthStatus.unauthenticated:
+                    statusColor = Colors.red;
+                    statusText = 'Unauthenticated';
+                    break;
+                  case AuthStatus.loading:
+                    statusColor = Colors.orange;
+                    statusText = 'Loading';
+                    break;
+                }
+
+                return Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Auth Status', style: Theme.of(context).textTheme.titleLarge),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Current status: $statusText',
+                          style: TextStyle(color: statusColor, fontWeight: FontWeight.bold),
                         ),
                       ],
                     ),
