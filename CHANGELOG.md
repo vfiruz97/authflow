@@ -1,3 +1,7 @@
+## 1.0.2 - May 28, 2025
+
+- Update SDK to `>=3.0.0 <4.0.0` and flutter to `>=3.7.0`  in pubspec.yaml
+
 ## 1.0.1 - May 28, 2025
 
 - Improved Readme documentation with quickstart guide and built-in providers
