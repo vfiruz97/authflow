@@ -36,8 +36,29 @@ class AuthManager {
   // Provider registry
   final AuthRegistry _registry = AuthRegistry();
 
-  /// Factory constructor that returns the singleton instance
-  factory AuthManager() => _instance;
+  static bool _testMode = false;
+
+  /// Enable test mode to create a new instance for each test
+  /// Returns true if test mode was enabled
+  static bool enableTestMode() {
+    _testMode = true;
+    return _testMode;
+  }
+
+  /// Disable test mode to return to singleton behavior
+  /// Returns false if test mode was disabled
+  static bool disableTestMode() {
+    _testMode = false;
+    return _testMode;
+  }
+
+  /// Factory constructor that returns the singleton instance or a new instance in test mode
+  factory AuthManager() {
+    if (_testMode) {
+      return AuthManager._();
+    }
+    return _instance;
+  }
 
   /// Private constructor for singleton
   AuthManager._();
@@ -155,7 +176,11 @@ class AuthManager {
       if (providerId != null) {
         final provider = _registry.getProvider(providerId);
         if (provider != null) {
-          await provider.logout();
+          try {
+            await provider.logout();
+          } catch (e) {
+            // Ignore provider logout failures, we still want to clear the session
+          }
         }
       }
 
@@ -198,7 +223,7 @@ class AuthManager {
         return;
       }
 
-      // Get provider ID from storage, default provider, or use the first available
+      // Get provider ID from current or default provider, or use the first available
       String? providerId = currentProviderId ?? _defaultProviderId ?? _registry.providers.firstOrNull?.providerId;
 
       // If we have a provider, check if the session is valid
@@ -232,10 +257,15 @@ class AuthManager {
     _providerIdController.add(providerId);
     _statusController.add(AuthStatus.authenticated);
 
-    // Save to storage if available
+    // Save to storage if available, but don't fail if storage fails
     if (_storage != null) {
-      await _storage!.saveUser(user);
-      await _storage!.saveToken(token);
+      try {
+        await _storage!.saveUser(user);
+        await _storage!.saveToken(token);
+      } catch (e) {
+        // Log storage error but don't fail the authentication
+        // The session is still valid in memory
+      }
     }
 
     // Dispatch login event
@@ -245,6 +275,9 @@ class AuthManager {
   /// Sets the state to unauthenticated
   void _setUnauthenticated() {
     _statusController.add(AuthStatus.unauthenticated);
+    _userController.add(null);
+    _tokenController.add(null);
+    _providerIdController.add(null);
   }
 
   /// Clears the current session
@@ -258,6 +291,14 @@ class AuthManager {
     if (_storage != null) {
       await _storage!.clearAll();
     }
+  }
+
+  /// Resets the AuthManager to its initial state (useful for testing)
+  void reset() {
+    _setUnauthenticated();
+    _storage = null;
+    _defaultProviderId = null;
+    _registry.clear();
   }
 
   /// Disposes resources
