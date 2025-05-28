@@ -33,4 +33,4 @@ build/
 .github
 *.lock
 .pubignore
-DRAFT.md
+*.draft.md
