@@ -1,3 +1,4 @@
+// This example shows how to plug in your own AuthProvider and user model with Authflow.
 import 'dart:convert';
 
 import 'package:authflow/authflow.dart';
@@ -6,8 +7,8 @@ import 'package:http/http.dart' as http;
 
 void main() => runApp(const MyApp());
 
-/// Custom HTTP-based authentication provider that fetches user data from a remote endpoint
-class MyCustomEmailPasswordAuthProvider extends EmailPasswordAuthProvider {
+/// HTTP-based authentication provider that fetches user data from a remote endpoint
+class HttpEmailPasswordAuthProvider extends EmailPasswordAuthProvider {
   final String baseUrl;
 
   @override
@@ -17,7 +18,7 @@ class MyCustomEmailPasswordAuthProvider extends EmailPasswordAuthProvider {
   // the defaultProviderId in AuthConfig.
   String get providerId => 'my_auth_provider';
 
-  MyCustomEmailPasswordAuthProvider({required this.baseUrl});
+  HttpEmailPasswordAuthProvider({required this.baseUrl});
 
   @override
   Future<AuthResult> authenticate(EmailPasswordCredentials credentials) async {
@@ -61,7 +62,7 @@ class _MyAppState extends State<MyApp> {
 
   Future<void> _configureAuth() async {
     final anonymousProvider = AnonymousAuthProvider();
-    final emailProvider = MyCustomEmailPasswordAuthProvider(
+    final emailProvider = HttpEmailPasswordAuthProvider(
       baseUrl: 'https://raw.githubusercontent.com/vfiruz97/authflow/refs/heads/main/example/assets',
     );
 
@@ -70,7 +71,7 @@ class _MyAppState extends State<MyApp> {
         providers: [anonymousProvider, emailProvider],
         // The defaultProviderId tells AuthManager which provider to use by default
         // when login() is called without specifying a provider ID.
-        // This matches the ID from MyCustomEmailPasswordAuthProvider's providerId getter.
+        // This matches the ID from HttpEmailPasswordAuthProvider's providerId getter.
         defaultProviderId: 'my_auth_provider',
         // SecureAuthStorage persists user and token data between app restarts.
         // withDefaultUser() configures it to use the DefaultAuthUser implementation.
