@@ -1,61 +1,114 @@
 # Authflow
 
-**Authflow** is a Flutter-first authentication toolkit that provides flexible, stream-based authentication with multiple providers, token handling, and composable UI widgets.
-
-## 🔥 Features
-
-- ✅ Modular provider-based authentication
-- 🔐 Token + user result on login
-- 📦 Pluggable secure/local storage system
-- 🔄 Reactive streams for auth status, user, and token
-- 📡 Global login/logout event support
-- 🧱 Customizable user model and providers
-- 🧩 UI widgets for seamless auth-based rendering
-- 🛡️ Standardized exception handling
+**Authflow** is a modular authentication orchestration package for Flutter. It helps you manage authentication flows, state, and persistence, while letting you plug in your own authentication logic, user model, and storage. Authflow is not a plug-and-play backend solution: you bring your own `AuthProvider` for your backend, and Authflow manages the rest.
 
 ---
 
-## 🛠️ Configuration
+## What Does Authflow Do?
 
-Set up your providers and storage with `AuthConfig`, then initialize the system:
+| Authflow Manages                | You Must Implement                  |
+| ------------------------------- | ----------------------------------- |
+| Provider orchestration          | Your own `AuthProvider`             |
+| Session state & persistence     | (Optionally) your own `AuthUser`    |
+| Reactive streams for status     | (Optionally) your own `AuthStorage` |
+| Global login/logout events      | UI and error handling               |
+| UI helpers (e.g. `AuthBuilder`) |                                     |
+
+> **Note:** Authflow does not provide production-ready providers for every backend. You are expected to implement your own provider(s) for your authentication system.
+>
+> **How provider selection works:** When you call `AuthManager().login()`, Authflow uses the provider with the `defaultProviderId` you configured. If you did not set a `defaultProviderId`, it will use the first provider in your list. Make sure to set this explicitly if you have multiple providers.
+
+---
+
+## 🚀 Quickstart
+
+1. **Implement your own `AuthProvider`** (see below for details)
+2. (Optionally) **Customize your user model** by extending `AuthUser`
+3. (Optionally) **Customize storage** by implementing `AuthStorage`
+4. **Configure** `AuthManager` with your providers and storage
+5. **Use** `AuthBuilder` or streams to react to auth state in your UI
+
+---
+
+## 🔌 Built-in AuthProviders
+
+- `AnonymousAuthProvider` – for anonymous login (**production-ready**)
+- `EmailPasswordAuthProvider` – for email/password login (demo/prototyping)
+
+> **You are expected to implement your own `AuthProvider` for your backend, except for anonymous flows.**
+
+### Example: Custom AuthProvider
 
 ```dart
-// Create providers
-final anonymousProvider = AnonymousAuthProvider();
-final emailProvider = MockEmailPasswordAuthProvider();
+class MyProvider extends AuthProvider {
+  @override
+  String get providerId => 'my_provider';
 
-// Configure auth manager
+  @override
+  Future<AuthResult> login(Map<String, dynamic> credentials) async {
+    // Your authentication logic here
+    return AuthResult(user: customUser, token: customToken);
+  }
+}
+```
+
+Register your provider:
+
+```dart
 await AuthManager().configure(AuthConfig(
-  providers: [anonymousProvider, emailProvider],
-  defaultProviderId: 'email_password', // Set the default provider
+  providers: [MyProvider(), AnonymousAuthProvider()],
+  defaultProviderId: 'my_provider',
   storage: SecureAuthStorage.withDefaultUser(),
 ));
 ```
 
-> **Note:** Setting `defaultProviderId` is important when using `AuthManager().login()`.
-> Without it, the system will try to use the current provider (if authenticated) or
-> fall back to the first registered provider.
+---
+
+## 👤 User Model Options
+
+- **Default:** `DefaultAuthUser` (minimal, can be used as-is)
+- **Custom:** Extend `AuthUser` to match your API
+
+> **Important:** If you use a custom user model, you must configure it in `SecureAuthStorage` by passing a custom deserializer. By default, `SecureAuthStorage.withDefaultUser()` is used, which only supports `DefaultAuthUser`.
+
+```dart
+final storage = SecureAuthStorage(
+  userDeserializer: (data) => MyUser.deserialize(data),
+);
+```
 
 ---
 
-## 🚀 Usage
+## 💾 Storage Options
+
+- **Default:** `SecureAuthStorage` (uses `shared_preferences`)
+- **Custom:** Implement `AuthStorage` for your own persistence
+
+---
+
+## 🛠️ Configuration Example
+
+```dart
+final myProvider = MyProvider();
+final anonProvider = AnonymousAuthProvider();
+await AuthManager().configure(AuthConfig(
+  providers: [myProvider, anonProvider],
+  defaultProviderId: 'my_provider',
+  storage: SecureAuthStorage.withDefaultUser(),
+));
+```
+
+---
+
+## 🔄 Usage
 
 ### Login
 
 ```dart
-// Login with default provider (as configured in AuthConfig)
-final result = await AuthManager().login({
+final result = await AuthManager().loginWithProvider('my_provider', {
   'email': 'user@example.com',
   'password': 'secret',
 });
-
-// Login with specific provider
-final result = await AuthManager().loginWithProvider(
-  'anonymous',
-  {},
-);
-
-// Access user and token from result
 final user = result.user;
 final token = result.token;
 ```
@@ -63,12 +116,7 @@ final token = result.token;
 ### Manual Session
 
 ```dart
-// Inject a session directly
-await AuthManager().setSession(
-  user,
-  token,
-  providerId: 'custom',
-);
+await AuthManager().setSession(user, token, providerId: 'my_provider');
 ```
 
 ### Logout
@@ -77,46 +125,22 @@ await AuthManager().setSession(
 await AuthManager().logout();
 ```
 
-### Auth State
+### Auth State & Streams
 
 ```dart
-// Get current state
 final isLoggedIn = AuthManager().isAuthenticated;
 final user = AuthManager().currentUser;
 final token = AuthManager().currentToken;
-
-// Listen to auth state changes
-AuthManager().statusStream.listen((status) {
-  print("Auth status: $status");
-});
-
-// Listen to user changes
-AuthManager().userStream.listen((user) {
-  if (user != null) {
-    print("User: ${user.id}");
-  }
-});
-
-// Listen to token changes
-AuthManager().tokenStream.listen((token) {
-  if (token != null) {
-    print("Token: ${token.accessToken}");
-  }
-});
+AuthManager().statusStream.listen((status) { ... });
+AuthManager().userStream.listen((user) { ... });
+AuthManager().tokenStream.listen((token) { ... });
 ```
 
 ### Global Events
 
 ```dart
-// Listen to all login events
-AuthEventBus().onLogin((event) {
-  print('User logged in: ${event.user.id} via ${event.providerId}');
-});
-
-// Listen to all logout events
-AuthEventBus().onLogout((event) {
-  print('User logged out: ${event.user?.id}');
-});
+AuthEventBus().onLogin((event) { ... });
+AuthEventBus().onLogout((event) { ... });
 ```
 
 ---
@@ -127,15 +151,9 @@ Use `AuthBuilder` to rebuild UI based on authentication state:
 
 ```dart
 AuthBuilder(
-  authenticated: (context, user, token) {
-    return HomeScreen(user: user);
-  },
-  unauthenticated: (context) {
-    return LoginScreen();
-  },
-  loading: (context) {
-    return LoadingScreen();
-  },
+  authenticated: (context, user, token) => HomeScreen(user: user),
+  unauthenticated: (context) => LoginScreen(),
+  loading: (context) => LoadingScreen(),
   // Optional: Control when rebuilds happen
   buildWhen: (previous, current) {
     // Don't rebuild during login attempts
@@ -147,169 +165,40 @@ AuthBuilder(
 );
 ```
 
-> **Tip:** The `buildWhen` parameter helps prevent UI flashing during authentication state changes. For example, you can use it to prevent the login screen from disappearing momentarily during login attempts.
-
----
-
-## 🧱 Extending
-
-### Custom Provider
-
-Implement `AuthProvider`, return an `AuthResult`, and add it to your `AuthConfig`:
-
-```dart
-class MyProvider extends AuthProvider {
-  @override
-  String get providerId => 'my_provider';
-
-  @override
-  Future<AuthResult> login(Map<String, dynamic> credentials) async {
-    // Implement your authentication logic here
-    // ...
-
-    // Return AuthResult with user and token
-    return AuthResult(user: customUser, token: customToken);
-  }
-
-  // ...logout(), isAuthenticated(), currentUser()
-}
-
-// Configure AuthManager with your custom provider
-await AuthManager().configure(AuthConfig(
-  providers: [
-    MyProvider(),
-    AnonymousAuthProvider(),
-  ],
-  // Optionally set your custom provider as default
-  defaultProviderId: 'my_provider',
-  storage: SecureAuthStorage.withDefaultUser(),
-));
-```
-
-### Custom User or Storage
-
-- Implement your own `AuthUser` to match your API
-- Implement `AuthStorage` for custom persistence
-
-## 🔐 Custom User Model
-
-Extend `AuthUser` to create your own user model:
-
-```dart
-class MyUser extends AuthUser {
-  @override
-  final String id;
-
-  @override
-  final String? email;
-
-  @override
-  final String? displayName;
-
-  final String? photoUrl;
-  final List<String> roles;
-
-  MyUser({
-    required this.id,
-    this.email,
-    this.displayName,
-    this.photoUrl,
-    this.roles = const [],
-  });
-
-  @override
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'email': email,
-      'displayName': displayName,
-      'photoUrl': photoUrl,
-      'roles': roles,
-    };
-  }
-
-  factory MyUser.fromJson(Map<String, dynamic> json) {
-    return MyUser(
-      id: json['id'],
-      email: json['email'],
-      displayName: json['displayName'],
-      photoUrl: json['photoUrl'],
-      roles: List<String>.from(json['roles'] ?? []),
-    );
-  }
-
-  factory MyUser.deserialize(String data) {
-    return MyUser.fromJson(jsonDecode(data));
-  }
-}
-
-// Use with custom storage:
-final storage = SecureAuthStorage(
-  userDeserializer: (data) => MyUser.deserialize(data),
-);
-```
+> **Tip:** The `buildWhen` parameter helps prevent UI flashing during authentication state changes.
 
 ---
 
 ## 🛡️ Error Handling
 
-Authflow provides a standardized exception handling system with `AuthException`:
+Authflow provides a standardized exception system with `AuthException`:
 
 ```dart
 try {
-  final result = await AuthManager().login({
-    'email': 'user@example.com',
-    // missing password
-  });
+  final result = await AuthManager().login({ ... });
 } on AuthException catch (e) {
-  // Access type and message
-  print('Error type: ${e.type}');
-  print('Error message: ${e.message}');
-
-  // Handle specific error types
-  switch (e.type) {
-    case AuthExceptionType.credentials:
-      showCredentialsError(e.message);
-      break;
-    case AuthExceptionType.provider:
-      showProviderError(e.message);
-      break;
-    // Handle other error types...
-    default:
-      showGenericError(e.message);
-  }
+  print('Error type: \\${e.type}');
+  print('Error message: \\${e.message}');
 }
 ```
 
-### Available Exception Types
+See the docs for available exception types and customization.
 
-The `AuthExceptionType` enum provides these core error categories:
+---
 
-- `credentials`: Issues with credentials (missing, invalid, etc.)
-- `provider`: Provider-specific errors (provider not found, implementation errors)
-- `custom`: For user-defined authentication errors
-- `unknown`: Unclassified errors
+## ❓ FAQ
 
-### Creating Custom Exceptions
+**Q: Is Authflow a plug-and-play backend auth solution?**  
+A: No. You must implement your own `AuthProvider` for your backend.
 
-```dart
-// Using a factory constructor
-final exception = AuthException.credentials('Password is too weak');
+**Q: Can I use my own user model?**  
+A: Yes! Just extend `AuthUser`.
 
-// For provider-specific errors
-final providerException = AuthException.provider(
-  'google_signin',
-  originalError,
-  'Failed to authenticate with Google'
-);
+**Q: Can I use my own storage?**  
+A: Yes! Just implement `AuthStorage`.
 
-// For your own custom authentication errors
-final myException = AuthException.custom(
-  'Account requires verification',
-  error: originalError,
-  details: {'verificationType': 'email'},
-);
-```
+**Q: What does Authflow actually do for me?**  
+A: It manages the flow, state, and persistence of authentication, so you can focus on your business logic.
 
 ---
 
