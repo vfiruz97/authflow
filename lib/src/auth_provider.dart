@@ -28,7 +28,10 @@ abstract class AuthProvider {
   /// Performs the logout operation for this provider
   ///
   /// This method is called when the user explicitly logs out.
-  /// It should perform any provider-specific cleanup.
+  ///
+  /// **Note:** Overriding this is optional. If not overridden, or if your provider does not require cleanup,
+  /// AuthManager will always clear the session and storage regardless.
+  /// Override only if your provider needs to perform remote or provider-specific cleanup.
   Future<void> logout() async {
     // Perform any necessary cleanup for the provider
   }

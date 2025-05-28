@@ -1,3 +1,7 @@
+## 1.0.1 - May 28, 2025
+
+- Improved Readme documentation with quickstart guide and built-in providers
+
 ## 1.0.0 - May 25, 2025
 
 - Fixed `AuthManager.login()` to properly respect `defaultProviderId` from `AuthConfig`
