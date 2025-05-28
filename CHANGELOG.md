@@ -1,5 +1,6 @@
-## 1.0.1 - May 26, 2025
+## 1.0.1 - May 28, 2025
 
+- Improved Readme documentation with quickstart guide and built-in providers
 
 ## 1.0.0 - May 25, 2025
 
