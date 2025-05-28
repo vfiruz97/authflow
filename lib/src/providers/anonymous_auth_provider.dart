@@ -25,8 +25,8 @@ class AnonymousAuthProvider extends AuthProvider {
   /// An optional [expirationDuration] can be provided to set the
   /// expiration duration for anonymous sessions. Defaults to 7 days.
   AnonymousAuthProvider({String Function()? idGenerator, Duration? expirationDuration})
-    : _idGenerator = idGenerator,
-      expirationDuration = expirationDuration ?? const Duration(days: 7);
+      : _idGenerator = idGenerator,
+        expirationDuration = expirationDuration ?? const Duration(days: 7);
 
   @override
   Future<AuthResult> login(Map<String, dynamic> credentials) async {

@@ -21,7 +21,7 @@ class AuthConfig {
 
   /// Creates a new [AuthConfig] with the given options
   AuthConfig({required this.providers, this.defaultProviderId, AuthStorage? storage})
-    : storage = storage ?? SecureAuthStorage.withDefaultUser() {
+      : storage = storage ?? SecureAuthStorage.withDefaultUser() {
     // Register all providers in the global registry
     final registry = AuthRegistry();
     for (final provider in providers) {

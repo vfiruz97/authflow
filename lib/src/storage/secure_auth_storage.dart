@@ -28,7 +28,7 @@ class SecureAuthStorage implements AuthStorage {
   /// );
   /// ```
   SecureAuthStorage({required AuthUser Function(String serialized) userDeserializer})
-    : _userDeserializer = userDeserializer;
+      : _userDeserializer = userDeserializer;
 
   /// Factory constructor for using the default user implementation
   factory SecureAuthStorage.withDefaultUser() {
