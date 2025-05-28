@@ -1,3 +1,6 @@
+## 1.0.1 - May 26, 2025
+
+
 ## 1.0.0 - May 25, 2025
 
 - Fixed `AuthManager.login()` to properly respect `defaultProviderId` from `AuthConfig`

@@ -139,8 +139,7 @@ AuthBuilder(
   // Optional: Control when rebuilds happen
   buildWhen: (previous, current) {
     // Don't rebuild during login attempts
-    if (current.status == AuthStatus.loading &&
-        previous.status != AuthStatus.loading) {
+    if (current.status == AuthStatus.loading && previous.status != AuthStatus.loading) {
       return false;
     }
     return true;
