@@ -143,6 +143,63 @@ AuthEventBus().onLogin((event) { ... });
 AuthEventBus().onLogout((event) { ... });
 ```
 
+### Token Refresh 🔄
+
+AuthFlow supports automatic and manual token refresh:
+
+```dart
+// Configure auto-refresh (enabled by default)
+await AuthManager().configure(AuthConfig(
+  providers: [MyProvider()],
+  autoRefreshOnExpiry: true, // Automatically refresh expired tokens
+));
+
+// Manual refresh
+try {
+  final newToken = await AuthManager().refreshSession();
+  if (newToken != null) {
+    print('Token refreshed successfully');
+  } else {
+    print('Refresh not supported by current provider');
+  }
+} catch (e) {
+  print('Refresh failed: $e');
+}
+
+// Listen for refresh events
+AuthEventBus().events.listen((event) {
+  if (event is TokenRefreshEvent) {
+    if (event.isSuccess) {
+      print('Token refreshed for user ${event.user.id}');
+    } else {
+      print('Refresh failed: ${event.error}');
+    }
+  }
+});
+```
+
+**Implementing refresh in your provider:**
+
+```dart
+class MyProvider extends AuthProvider {
+  @override
+  Future<AuthToken?> refreshToken(AuthToken currentToken, AuthUser user) async {
+    // Make API call to refresh token
+    final response = await _api.refreshToken(currentToken.refreshToken);
+
+    if (response.isSuccess) {
+      return AuthToken(
+        accessToken: response.accessToken,
+        refreshToken: response.refreshToken,
+        expiresAt: response.expiresAt,
+      );
+    }
+
+    return null; // Refresh failed or not supported
+  }
+}
+```
+
 ---
 
 ## 🧩 Flutter UI Integration

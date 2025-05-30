@@ -1,3 +1,4 @@
+import '../auth_exception.dart';
 import '../auth_token.dart';
 import '../auth_user.dart';
 
@@ -35,4 +36,45 @@ class LogoutEvent extends AuthEvent {
 
   /// Creates a new [LogoutEvent]
   const LogoutEvent({this.user, this.providerId}) : super('logout');
+}
+
+/// Event dispatched when a token is refreshed
+class TokenRefreshEvent extends AuthEvent {
+  /// The refreshed authentication token
+  final AuthToken newToken;
+
+  /// The previous (expired) token
+  final AuthToken? oldToken;
+
+  /// The user for whom the token was refreshed
+  final AuthUser user;
+
+  /// Provider ID that performed the refresh
+  final String providerId;
+
+  /// Whether the refresh was successful
+  final bool isSuccess;
+
+  /// Error that occurred during refresh (if any)
+  final AuthException? error;
+
+  /// Creates a new [TokenRefreshEvent]
+  const TokenRefreshEvent({
+    required this.newToken,
+    this.oldToken,
+    required this.user,
+    required this.providerId,
+    this.isSuccess = true,
+    this.error,
+  }) : super('token_refresh');
+
+  /// Creates a failed token refresh event
+  const TokenRefreshEvent.failed({
+    required this.user,
+    required this.providerId,
+    required this.error,
+    this.oldToken,
+  })  : newToken = const AuthToken(accessToken: '', expiresAt: null),
+        isSuccess = false,
+        super('token_refresh');
 }

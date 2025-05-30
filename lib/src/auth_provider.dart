@@ -46,6 +46,21 @@ abstract class AuthProvider {
     return !token.isExpired;
   }
 
+  /// Refreshes the authentication token using a refresh token
+  ///
+  /// This method should be implemented by providers that support token refresh.
+  /// If the provider doesn't support refresh tokens, it can return null.
+  ///
+  /// [currentToken] - The current (possibly expired) token
+  /// [user] - The current authenticated user
+  ///
+  /// Returns a new [AuthToken] with refreshed access token, or null if refresh
+  /// is not supported or fails.
+  Future<AuthToken?> refreshToken(AuthToken currentToken, AuthUser user) async {
+    // Default implementation: refresh not supported
+    return null;
+  }
+
   /// Creates a provider-specific error message for failed logins
   ///
   /// This method can be overridden to provide more specific error messages

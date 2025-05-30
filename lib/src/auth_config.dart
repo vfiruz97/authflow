@@ -19,9 +19,22 @@ class AuthConfig {
   /// The storage implementation to use for persisting authentication state
   final AuthStorage storage;
 
+  /// Whether to automatically attempt token refresh when the access token expires
+  ///
+  /// When enabled, AuthManager will automatically try to refresh expired tokens
+  /// using the provider's [AuthProvider.refreshToken] method during session
+  /// restoration.
+  ///
+  /// Defaults to true for seamless user experience.
+  final bool autoRefreshOnExpiry;
+
   /// Creates a new [AuthConfig] with the given options
-  AuthConfig({required this.providers, this.defaultProviderId, AuthStorage? storage})
-      : storage = storage ?? SecureAuthStorage.withDefaultUser() {
+  AuthConfig({
+    required this.providers,
+    this.defaultProviderId,
+    AuthStorage? storage,
+    this.autoRefreshOnExpiry = true,
+  }) : storage = storage ?? SecureAuthStorage.withDefaultUser() {
     // Register all providers in the global registry
     final registry = AuthRegistry();
     for (final provider in providers) {

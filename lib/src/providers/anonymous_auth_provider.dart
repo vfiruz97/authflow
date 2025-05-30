@@ -40,7 +40,7 @@ class AnonymousAuthProvider extends AuthProvider {
       // Create a token for the anonymous session
       final token = AuthToken(
         accessToken: 'anonymous-${user.id}',
-        // Set an expiration date for the anonymous session (e.g., 7 days)
+        refreshToken: 'anonymous-${_generateRandomId()}-refresh',
         expiresAt: DateTime.now().add(expirationDuration),
       );
 
@@ -53,6 +53,21 @@ class AnonymousAuthProvider extends AuthProvider {
   @override
   Future<void> logout() async {
     // No special logout handling needed for anonymous users
+  }
+
+  @override
+  Future<AuthToken?> refreshToken(AuthToken currentToken, AuthUser user) async {
+    // For anonymous sessions, we can create a new token with extended expiration
+    if (user.isAnonymous) {
+      return AuthToken(
+        accessToken: 'anonymous-${user.id}-refreshed-${DateTime.now().millisecondsSinceEpoch}',
+        refreshToken: 'anonymous-${_generateRandomId()}-refresh',
+        expiresAt: DateTime.now().add(expirationDuration),
+      );
+    }
+
+    // If not anonymous, refresh is not supported
+    return null;
   }
 
   /// Generates a random ID for anonymous users
