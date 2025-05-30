@@ -1,6 +1,25 @@
+## 1.1.0 - May 30, 2025
+
+- Added `imageUrl` property to `DefaultAuthUser`
+
+### ✨ Token Refresh Feature
+
+- **Added token refresh functionality to `AuthProvider` interface**
+  - New `refreshToken` method with default implementation returning `null`
+  - Allows providers to implement custom token refresh logic
+- **Enhanced `AuthManager` with refresh capabilities**
+  - New `refreshSession()` method for manual token refresh
+  - Automatic token refresh during session restoration when enabled
+- **Added configuration control via `AuthConfig`**
+  - New `autoRefreshOnExpiry` flag (defaults to `true`)
+  - Enables/disables automatic refresh on expired tokens
+- **New `TokenRefreshEvent` for refresh tracking**
+  - Success and failure events with detailed information
+  - Integrates with existing event bus system
+
 ## 1.0.2 - May 28, 2025
 
-- Update SDK to `>=3.0.0 <4.0.0` and flutter to `>=3.7.0`  in pubspec.yaml
+- Update SDK to `>=3.0.0 <4.0.0` and flutter to `>=3.7.0` in pubspec.yaml
 
 ## 1.0.1 - May 28, 2025
 

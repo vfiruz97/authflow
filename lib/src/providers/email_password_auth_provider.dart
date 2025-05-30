@@ -47,6 +47,15 @@ abstract class EmailPasswordAuthProvider extends AuthProvider {
   /// service and return an [AuthResult] containing both the user and token.
   Future<AuthResult> authenticate(EmailPasswordCredentials credentials);
 
+  /// Refreshes the authentication token using a refresh token
+  ///
+  /// Base implementation returns null (refresh not supported).
+  /// Implementations should override this method to provide refresh functionality.
+  @override
+  Future<AuthToken?> refreshToken(AuthToken currentToken, AuthUser user) async {
+    return null;
+  }
+
   @override
   String formatLoginError(dynamic error) {
     if (error is AuthException) {
@@ -83,5 +92,26 @@ class MockEmailPasswordAuthProvider extends EmailPasswordAuthProvider {
     );
 
     return AuthResult(user: user, token: token);
+  }
+
+  @override
+  Future<AuthToken?> refreshToken(AuthToken currentToken, AuthUser user) async {
+    // Check if we have a refresh token
+    if (currentToken.refreshToken == null) {
+      return null;
+    }
+
+    // Simulate network delay for refresh
+    await Future.delayed(const Duration(milliseconds: 200));
+
+    // For mock implementation, always succeed if refresh token is present
+    // In real implementations, you would validate the refresh token with your backend
+    final newToken = AuthToken(
+      accessToken: 'refreshed-token-${user.id}-${DateTime.now().millisecondsSinceEpoch}',
+      refreshToken: currentToken.refreshToken, // Keep the same refresh token
+      expiresAt: DateTime.now().add(const Duration(days: 7)),
+    );
+
+    return newToken;
   }
 }

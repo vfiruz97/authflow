@@ -27,11 +27,8 @@ class AuthManager {
   // Event bus for dispatching global events
   final AuthEventBus _eventBus = AuthEventBus();
 
-  // Storage instance
-  AuthStorage? _storage;
-
-  // Default provider ID from configuration
-  String? _defaultProviderId;
+  // Configuration instance
+  AuthConfig? _config;
 
   // Provider registry
   final AuthRegistry _registry = AuthRegistry();
@@ -62,6 +59,12 @@ class AuthManager {
 
   /// Private constructor for singleton
   AuthManager._();
+
+  // Storage instance
+  AuthStorage? get _storage => _config?.storage;
+
+  // Default provider ID from configuration
+  String? get _defaultProviderId => _config?.defaultProviderId;
 
   /// Stream of authentication status changes
   Stream<AuthStatus> get statusStream => _statusController.stream.distinct();
@@ -94,8 +97,7 @@ class AuthManager {
   ///
   /// This must be called before using any authentication functionality.
   Future<void> configure(AuthConfig config) async {
-    _storage = config.storage;
-    _defaultProviderId = config.defaultProviderId;
+    _config = config;
 
     // Set initial state to loading
     _statusController.add(AuthStatus.loading);
@@ -203,6 +205,86 @@ class AuthManager {
     await _setSession(user, token, providerId);
   }
 
+  /// Refreshes the current authentication token
+  ///
+  /// Attempts to refresh the current token using the current provider's refresh
+  /// functionality. If successful, updates the session with the new token.
+  ///
+  /// Returns the new token if refresh is successful, null if refresh is not
+  /// supported or fails.
+  ///
+  /// Throws [AuthException] if no session is active or provider is not found.
+  Future<AuthToken?> refreshSession() async {
+    final currentUser = _userController.value;
+    final currentToken = _tokenController.value;
+    final currentProviderId = _providerIdController.value;
+
+    // Check if we have an active session
+    if (currentUser == null || currentToken == null || currentProviderId == null) {
+      throw AuthException.custom(
+        'Cannot refresh token: no active session found',
+        error: Exception('No active session'),
+      );
+    }
+
+    // Get the provider
+    final provider = _registry.getProvider(currentProviderId);
+    if (provider == null) {
+      throw AuthException.provider(
+        currentProviderId,
+        Exception('Provider not found'),
+        'Cannot refresh token: provider not found',
+      );
+    }
+
+    try {
+      // Attempt to refresh the token
+      final newToken = await provider.refreshToken(currentToken, currentUser);
+
+      if (newToken != null) {
+        // Update the session with the new token
+        await _setSession(currentUser, newToken, currentProviderId);
+
+        // Dispatch refresh success event
+        _eventBus.dispatch(TokenRefreshEvent(
+          newToken: newToken,
+          oldToken: currentToken,
+          user: currentUser,
+          providerId: currentProviderId,
+          isSuccess: true,
+        ));
+
+        return newToken;
+      } else {
+        // Provider doesn't support refresh or refresh failed
+        // Dispatch refresh failed event
+        _eventBus.dispatch(TokenRefreshEvent.failed(
+          user: currentUser,
+          providerId: currentProviderId,
+          error: AuthException.custom(
+            'Token refresh not supported or failed',
+            error: Exception('Refresh failed or not supported'),
+          ),
+          oldToken: currentToken,
+        ));
+
+        return null;
+      }
+    } catch (e) {
+      final error = AuthException.custom('Token refresh failed', error: e);
+      // Refresh failed with error
+      _eventBus.dispatch(TokenRefreshEvent.failed(
+        user: currentUser,
+        providerId: currentProviderId,
+        error: error,
+        oldToken: currentToken,
+      ));
+
+      // Rethrow the error for caller to handle
+      throw error;
+    }
+  }
+
   /// Restores the session from storage
   Future<void> _restoreSession() async {
     if (_storage == null) {
@@ -216,15 +298,58 @@ class AuthManager {
 
     // If both token and user are available, set the session
     if (token != null && user != null) {
-      // Check if token is expired
-      if (token.isExpired) {
+      // Get provider ID from current or default provider, or use the first available
+      String? providerId = currentProviderId ?? _defaultProviderId ?? _registry.providers.firstOrNull?.providerId;
+
+      // Check if token is expired and auto-refresh is enabled
+      if (token.isExpired && _config?.autoRefreshOnExpiry == true && providerId != null) {
+        // Try to refresh the token before clearing the session
+        final provider = _registry.getProvider(providerId);
+        if (provider != null) {
+          try {
+            // Temporarily set the session to enable refresh
+            _userController.add(user);
+            _tokenController.add(token);
+            _providerIdController.add(providerId);
+
+            // Attempt to refresh the token
+            final newToken = await provider.refreshToken(token, user);
+            if (newToken != null) {
+              // Refresh successful, update the session
+              await _setSession(user, newToken, providerId);
+
+              // Dispatch refresh success event
+              _eventBus.dispatch(TokenRefreshEvent(
+                newToken: newToken,
+                oldToken: token,
+                user: user,
+                providerId: providerId,
+                isSuccess: true,
+              ));
+
+              return;
+            }
+          } catch (e) {
+            // Refresh failed, continue with normal expiry handling
+            _eventBus.dispatch(TokenRefreshEvent.failed(
+              user: user,
+              providerId: providerId,
+              error: AuthException.custom('Token refresh failed', error: e),
+              oldToken: token,
+            ));
+          }
+        }
+
+        // If we reach here, refresh failed or wasn't available
+        await _storage!.clearAll();
+        _setUnauthenticated();
+        return;
+      } else if (token.isExpired) {
+        // Token expired and auto-refresh is disabled
         await _storage!.clearAll();
         _setUnauthenticated();
         return;
       }
-
-      // Get provider ID from current or default provider, or use the first available
-      String? providerId = currentProviderId ?? _defaultProviderId ?? _registry.providers.firstOrNull?.providerId;
 
       // If we have a provider, check if the session is valid
       if (providerId != null) {
@@ -296,8 +421,6 @@ class AuthManager {
   /// Resets the AuthManager to its initial state (useful for testing)
   void reset() {
     _setUnauthenticated();
-    _storage = null;
-    _defaultProviderId = null;
     _registry.clear();
   }
 

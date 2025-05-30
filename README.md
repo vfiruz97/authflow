@@ -16,7 +16,7 @@
 
 > **Note:** Authflow does not provide production-ready providers for every backend. You are expected to implement your own provider(s) for your authentication system.
 >
-> **How provider selection works:** When you call `AuthManager().login()`, Authflow uses the provider with the `defaultProviderId` you configured. If you did not set a `defaultProviderId`, it will use the first provider in your list. Make sure to set this explicitly if you have multiple providers.
+> **How provider selection works:** When you call `AuthManager().login()`, Authflow uses the provider with the `defaultProviderId` you configured. If you did not set a `defaultProviderId`, it will use the first provider in your list.
 
 ---
 
@@ -98,39 +98,31 @@ await AuthManager().configure(AuthConfig(
 ));
 ```
 
+> **Note:** Only one provider/session is active at a time — logging in or setting a session with a different provider will switch and replace the current session.
+
 ---
 
 ## 🔄 Usage
 
-### Login
-
 ```dart
+// Login
 final result = await AuthManager().loginWithProvider('my_provider', {
   'email': 'user@example.com',
   'password': 'secret',
 });
 final user = result.user;
 final token = result.token;
-```
 
-### Manual Session
-
-```dart
+// Manual Session
 await AuthManager().setSession(user, token, providerId: 'my_provider');
-```
 
-### Logout
-
-```dart
+// Logout
 await AuthManager().logout();
-```
 
-### Auth State & Streams
-
-```dart
-final isLoggedIn = AuthManager().isAuthenticated;
+// Auth State & Streams
 final user = AuthManager().currentUser;
 final token = AuthManager().currentToken;
+final isLoggedIn = AuthManager().isAuthenticated;
 AuthManager().statusStream.listen((status) { ... });
 AuthManager().userStream.listen((user) { ... });
 AuthManager().tokenStream.listen((token) { ... });
@@ -141,6 +133,43 @@ AuthManager().tokenStream.listen((token) { ... });
 ```dart
 AuthEventBus().onLogin((event) { ... });
 AuthEventBus().onLogout((event) { ... });
+AuthEventBus().events.listen((event) { ... });
+```
+
+### Token Refresh 🔄
+
+AuthFlow supports automatic and manual token refresh:
+
+```dart
+// Configure auto-refresh (enabled by default)
+await AuthManager().configure(AuthConfig(
+  providers: [MyProvider()],
+  autoRefreshOnExpiry: true, // Automatically refresh expired tokens
+));
+
+// Manual refresh
+final AuthToken? newToken = await AuthManager().refreshSession();
+
+// Listen for refresh events
+AuthEventBus().events.listen((event) {
+  if (event is TokenRefreshEvent) { ... }
+});
+```
+
+**Implementing refresh in your provider:**
+
+```dart
+class MyProvider extends AuthProvider {
+  @override
+  Future<AuthToken?> refreshToken(AuthToken currentToken, AuthUser user) async {
+    // Your refresh logic here
+    return AuthToken(
+      accessToken: newAccessToken,
+      refreshToken: newRefreshToken,
+      expiresAt: newExpiresAt,
+    );
+  }
+}
 ```
 
 ---
@@ -154,9 +183,7 @@ AuthBuilder(
   authenticated: (context, user, token) => HomeScreen(user: user),
   unauthenticated: (context) => LoginScreen(),
   loading: (context) => LoadingScreen(),
-  // Optional: Control when rebuilds happen
   buildWhen: (previous, current) {
-    // Don't rebuild during login attempts
     if (current.status == AuthStatus.loading && previous.status != AuthStatus.loading) {
       return false;
     }

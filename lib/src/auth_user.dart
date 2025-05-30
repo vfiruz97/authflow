@@ -46,8 +46,17 @@ class DefaultAuthUser extends AuthUser {
   @override
   final bool isAnonymous;
 
+  /// URL to the user's profile image (if available)
+  final String? imageUrl;
+
   /// Creates a new [DefaultAuthUser] instance
-  DefaultAuthUser({required this.id, this.email, this.displayName, this.isAnonymous = false});
+  DefaultAuthUser({
+    required this.id,
+    this.email,
+    this.displayName,
+    this.imageUrl,
+    this.isAnonymous = false,
+  });
 
   /// Creates a new [DefaultAuthUser] from JSON data
   factory DefaultAuthUser.fromJson(Map<String, dynamic> json) {
@@ -56,12 +65,19 @@ class DefaultAuthUser extends AuthUser {
       email: json['email'] as String?,
       displayName: json['displayName'] as String?,
       isAnonymous: json['isAnonymous'] as bool? ?? false,
+      imageUrl: json['imageUrl'] as String?,
     );
   }
 
   @override
   Map<String, dynamic> toJson() {
-    return {'id': id, 'email': email, 'displayName': displayName, 'isAnonymous': isAnonymous};
+    return {
+      'id': id,
+      'email': email,
+      'displayName': displayName,
+      'isAnonymous': isAnonymous,
+      'imageUrl': imageUrl,
+    };
   }
 
   /// Creates a new [DefaultAuthUser] from a serialized JSON string
@@ -70,12 +86,19 @@ class DefaultAuthUser extends AuthUser {
   }
 
   /// Creates a copy of this user with the given fields replaced with new values
-  DefaultAuthUser copyWith({String? id, String? email, String? displayName, bool? isAnonymous}) {
+  DefaultAuthUser copyWith({
+    String? id,
+    String? email,
+    String? displayName,
+    bool? isAnonymous,
+    String? imageUrl,
+  }) {
     return DefaultAuthUser(
       id: id ?? this.id,
       email: email ?? this.email,
       displayName: displayName ?? this.displayName,
       isAnonymous: isAnonymous ?? this.isAnonymous,
+      imageUrl: imageUrl ?? this.imageUrl,
     );
   }
 }
