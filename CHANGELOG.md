@@ -1,4 +1,4 @@
-## 1.1.0 - May 28, 2025
+## 1.1.0 - May 30, 2025
 
 - Added `imageUrl` property to `DefaultAuthUser`
 
