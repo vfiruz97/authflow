@@ -98,6 +98,8 @@ await AuthManager().configure(AuthConfig(
 ));
 ```
 
+> **Note:** Only one provider/session is active at a time — logging in or setting a session with a different provider will switch and replace the current session.
+
 ---
 
 ## 🔄 Usage
