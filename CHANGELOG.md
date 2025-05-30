@@ -1,6 +1,10 @@
+## 1.1.0 - May 28, 2025
+
+- Added `imageUrl` property to `DefaultAuthUser`
+
 ## 1.0.2 - May 28, 2025
 
-- Update SDK to `>=3.0.0 <4.0.0` and flutter to `>=3.7.0`  in pubspec.yaml
+- Update SDK to `>=3.0.0 <4.0.0` and flutter to `>=3.7.0` in pubspec.yaml
 
 ## 1.0.1 - May 28, 2025
 
